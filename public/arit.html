@@ -12453,6 +12453,243 @@ html, body, button, input, select, textarea, .tab, .card, .ct, .ctl,
 })();
 </script>
 
+<style id="arit-v6-phase2-style">
+#arit-v6-phase2{margin:14px 0;display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));font-family:inherit}
+#arit-v6-phase2 .v6p2-card{background:rgba(15,23,42,.55);border:1px solid rgba(148,163,184,.18);border-radius:10px;padding:12px 14px;color:#e2e8f0}
+#arit-v6-phase2 .v6p2-card h4{margin:0 0 8px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;display:flex;justify-content:space-between;align-items:center}
+#arit-v6-phase2 .v6p2-card h4 .v6p2-badge{font-size:10px;padding:2px 8px;border-radius:999px;background:#334155;color:#e2e8f0;letter-spacing:.05em}
+#arit-v6-phase2 .v6p2-row{display:flex;justify-content:space-between;gap:8px;padding:3px 0;font-size:12.5px;border-bottom:1px dashed rgba(148,163,184,.12)}
+#arit-v6-phase2 .v6p2-row:last-child{border-bottom:0}
+#arit-v6-phase2 .v6p2-row span:first-child{color:#94a3b8}
+#arit-v6-phase2 .v6p2-row span:last-child{color:#f1f5f9;font-weight:600}
+#arit-v6-phase2 .v6p2-pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.05em}
+#arit-v6-phase2 .v6p2-pill.go{background:#15803d;color:#dcfce7}
+#arit-v6-phase2 .v6p2-pill.hold{background:#a16207;color:#fef3c7}
+#arit-v6-phase2 .v6p2-pill.stop{background:#b91c1c;color:#fee2e2}
+#arit-v6-phase2 .v6p2-pill.warm{background:#1d4ed8;color:#dbeafe}
+#arit-v6-phase2 .v6p2-empty{color:#64748b;font-style:italic;font-size:12px}
+</style>
+
+<script id="arit-v6-phase2-script">
+/*  ARIT V6 — PHASE 2 EXTENSION
+    Modules 2 (Source Performance), 5 (Lifecycle), 6 (Resolution Windows),
+    11 (Continue/Stop). Read-only over window.spins and prediction state.
+    Single removable IIFE. window.ARIT_V6_PHASE2 = { render, snapshot }.
+*/
+(function ARIT_V6_PHASE2(){
+  'use strict';
+
+  function getSpins(){
+    try{
+      if(Array.isArray(window.spins)) return window.spins.slice();
+    }catch(e){}
+    return [];
+  }
+  function getEffectiveSpins(){
+    var live = getSpins();
+    try{
+      var h = (window.ARIT_V6 && window.ARIT_V6.state) ? window.ARIT_V6.state().history : null;
+      if(h && h.enabled && Array.isArray(h.imported) && h.imported.length){
+        return h.imported.concat(live);
+      }
+    }catch(e){}
+    return live;
+  }
+
+  // ── MODULE 2 — Source Performance Engine ────────────────────────────
+  // Tracks how often each known prediction "source" (top-N, streets, dozens, columns,
+  // colors) would have hit, computed retrospectively over the effective spin history.
+  function sourcePerf(){
+    var s = getEffectiveSpins();
+    var n = s.length;
+    if(n < 6) return { ready:false, reason:'Need ≥6 spins for source analytics', rows:[] };
+    var rows = [];
+    // Top-5 hot numbers (frequency in last 30)
+    var win = s.slice(-30);
+    var freq = {}; win.forEach(function(x){ freq[x]=(freq[x]||0)+1; });
+    var top5 = Object.keys(freq).sort(function(a,b){return freq[b]-freq[a];}).slice(0,5).map(Number);
+    rows.push({ name:'Top-5 (last 30)', hit: top5.indexOf(s[n-1])>=0, sample:top5.join(',') });
+    // Dozens dominance
+    function dozOf(x){ if(x===0)return -1; return x<=12?1:x<=24?2:3; }
+    var dC=[0,0,0]; win.forEach(function(x){ var d=dozOf(x); if(d>0)dC[d-1]++; });
+    var topDoz = dC.indexOf(Math.max.apply(null,dC))+1;
+    rows.push({ name:'Dominant dozen', hit: dozOf(s[n-1])===topDoz, sample:'D'+topDoz });
+    // Columns
+    function colOf(x){ if(x===0)return -1; return ((x-1)%3)+1; }
+    var cC=[0,0,0]; win.forEach(function(x){ var c=colOf(x); if(c>0)cC[c-1]++; });
+    var topCol = cC.indexOf(Math.max.apply(null,cC))+1;
+    rows.push({ name:'Dominant column', hit: colOf(s[n-1])===topCol, sample:'C'+topCol });
+    // Color
+    var REDS=[1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
+    function colorOf(x){ if(x===0)return 'G'; return REDS.indexOf(x)>=0?'R':'B'; }
+    var rcnt=0,bcnt=0; win.forEach(function(x){ var c=colorOf(x); if(c==='R')rcnt++; else if(c==='B')bcnt++; });
+    var topColor = rcnt>bcnt?'R':'B';
+    rows.push({ name:'Dominant color', hit: colorOf(s[n-1])===topColor, sample:topColor });
+    // Score = hits / sources
+    var hits = rows.reduce(function(a,r){return a+(r.hit?1:0);},0);
+    return { ready:true, score: hits, total: rows.length, rows: rows, window: win.length };
+  }
+
+  // ── MODULE 5 — Lifecycle Engine ─────────────────────────────────────
+  // Detects current session "phase" by recency / variance over last spins.
+  function lifecycle(){
+    var s = getEffectiveSpins();
+    var n = s.length;
+    if(n < 8) return { phase:'WARMUP', label:'Warm-up', detail:'Collecting baseline (' + n + '/8)', cls:'warm' };
+    var last10 = s.slice(-10);
+    var uniq = {}; last10.forEach(function(x){uniq[x]=1;});
+    var diversity = Object.keys(uniq).length;
+    var last5 = s.slice(-5);
+    var hot = {}; last5.forEach(function(x){hot[x]=(hot[x]||0)+1;});
+    var maxHot = Math.max.apply(null, Object.keys(hot).map(function(k){return hot[k];}));
+    var phase, label, detail, cls;
+    if(maxHot >= 3){ phase='CLUSTER'; label='Cluster'; detail='Repeat hits forming — exploit'; cls='go'; }
+    else if(diversity >= 9){ phase='SCATTER'; label='Scatter'; detail='High dispersion — defensive'; cls='stop'; }
+    else if(diversity <= 5){ phase='FOCUSED'; label='Focused'; detail='Tight zone forming'; cls='go'; }
+    else { phase='NEUTRAL'; label='Neutral'; detail='Mixed signals'; cls='hold'; }
+    return { phase:phase, label:label, detail:detail, cls:cls, diversity:diversity, maxHot:maxHot };
+  }
+
+  // ── MODULE 6 — Resolution Window Analytics ──────────────────────────
+  // Average distance (in spins) between repeats and zone re-hits, used to set the
+  // expected hit window operators wait on.
+  function resolutionWindow(){
+    var s = getEffectiveSpins();
+    var n = s.length;
+    if(n < 12) return { ready:false, avgRepeat:null, avgZone:null, recommended:'—' };
+    var last = {}, gaps=[];
+    for(var i=0;i<n;i++){ var x=s[i]; if(last[x]!=null) gaps.push(i-last[x]); last[x]=i; }
+    var avgRepeat = gaps.length ? Math.round(gaps.reduce(function(a,b){return a+b;},0)/gaps.length) : null;
+    function dozOf(x){ if(x===0)return 0; return x<=12?1:x<=24?2:3; }
+    var lastD={}, zg=[];
+    for(var j=0;j<n;j++){ var d=dozOf(s[j]); if(d===0)continue; if(lastD[d]!=null) zg.push(j-lastD[d]); lastD[d]=j; }
+    var avgZone = zg.length ? Math.round(zg.reduce(function(a,b){return a+b;},0)/zg.length) : null;
+    var rec = avgRepeat ? Math.max(3, Math.min(12, Math.round(avgRepeat*0.7))) : 6;
+    return { ready:true, avgRepeat:avgRepeat, avgZone:avgZone, recommended: rec+' spins', samples:gaps.length };
+  }
+
+  // ── MODULE 11 — Continue / Stop Engine ──────────────────────────────
+  // Combines lifecycle + source performance + recent volatility into a single
+  // CONTINUE / HOLD / STOP recommendation.
+  function continueStop(){
+    var lc = lifecycle();
+    var sp = sourcePerf();
+    var rw = resolutionWindow();
+    var score = 0, reasons=[];
+    if(lc.phase==='CLUSTER'){ score+=2; reasons.push('Cluster phase active'); }
+    if(lc.phase==='FOCUSED'){ score+=1; reasons.push('Focused dispersion'); }
+    if(lc.phase==='SCATTER'){ score-=2; reasons.push('Scatter — low edge'); }
+    if(sp.ready){
+      if(sp.score >= 3){ score+=2; reasons.push(sp.score+'/'+sp.total+' sources aligned'); }
+      else if(sp.score <= 1){ score-=1; reasons.push('Sources disagree ('+sp.score+'/'+sp.total+')'); }
+    } else { reasons.push(sp.reason||'Insufficient data'); }
+    if(rw.ready && rw.avgRepeat && rw.avgRepeat < 8){ score+=1; reasons.push('Fast resolution window'); }
+    var verdict, cls;
+    if(score >= 3){ verdict='CONTINUE'; cls='go'; }
+    else if(score <= -1){ verdict='STOP'; cls='stop'; }
+    else { verdict='HOLD'; cls='hold'; }
+    return { verdict:verdict, cls:cls, score:score, reasons:reasons };
+  }
+
+  // ── RENDER ──────────────────────────────────────────────────────────
+  function ensureMount(){
+    var existing = document.getElementById('arit-v6-phase2');
+    if(existing) return existing;
+    // Anchor: prefer below the Phase 1 coach card, else below the workspace, else end of Spin tab.
+    var anchor = document.getElementById('arit-v6-coach')
+              || document.getElementById('arit-v6-workspace')
+              || document.querySelector('[data-tab="spin"]')
+              || document.body;
+    var host = document.createElement('div');
+    host.id = 'arit-v6-phase2';
+    if(anchor && anchor.parentNode){
+      if(anchor.nextSibling) anchor.parentNode.insertBefore(host, anchor.nextSibling);
+      else anchor.parentNode.appendChild(host);
+    } else {
+      document.body.appendChild(host);
+    }
+    return host;
+  }
+
+  function rowHTML(label, value){
+    return '<div class="v6p2-row"><span>'+label+'</span><span>'+value+'</span></div>';
+  }
+  function card(title, badgeHTML, bodyHTML){
+    return '<div class="v6p2-card"><h4>'+title+(badgeHTML?'<span class="v6p2-badge">'+badgeHTML+'</span>':'')+'</h4>'+bodyHTML+'</div>';
+  }
+
+  function render(){
+    try{
+      var host = ensureMount(); if(!host) return;
+      var sp = sourcePerf(), lc = lifecycle(), rw = resolutionWindow(), cs = continueStop();
+
+      // Source Performance card
+      var spBody;
+      if(!sp.ready){
+        spBody = '<div class="v6p2-empty">'+sp.reason+'</div>';
+      } else {
+        spBody = sp.rows.map(function(r){
+          return rowHTML(r.name+' <small style="opacity:.55">'+r.sample+'</small>',
+            '<span class="v6p2-pill '+(r.hit?'go':'stop')+'">'+(r.hit?'HIT':'MISS')+'</span>');
+        }).join('') + rowHTML('Aligned sources', sp.score+' / '+sp.total);
+      }
+
+      // Lifecycle card
+      var lcBody = rowHTML('Phase', '<span class="v6p2-pill '+lc.cls+'">'+lc.label+'</span>')
+                 + rowHTML('Detail', lc.detail)
+                 + (lc.diversity!=null ? rowHTML('Diversity (last 10)', lc.diversity) : '')
+                 + (lc.maxHot!=null ? rowHTML('Peak hot (last 5)', lc.maxHot+'×') : '');
+
+      // Resolution Window card
+      var rwBody;
+      if(!rw.ready){
+        rwBody = '<div class="v6p2-empty">Need ≥12 spins for window analytics</div>';
+      } else {
+        rwBody = rowHTML('Avg repeat gap', rw.avgRepeat+' spins')
+               + rowHTML('Avg dozen re-hit', rw.avgZone!=null?rw.avgZone+' spins':'—')
+               + rowHTML('Recommended wait', rw.recommended)
+               + rowHTML('Samples', rw.samples);
+      }
+
+      // Continue/Stop card
+      var csBody = rowHTML('Verdict', '<span class="v6p2-pill '+cs.cls+'">'+cs.verdict+'</span>')
+                 + rowHTML('Composite score', cs.score)
+                 + (cs.reasons.length ? '<div style="margin-top:6px;font-size:11.5px;color:#cbd5e1;line-height:1.5">'
+                     + cs.reasons.map(function(r){return '• '+r;}).join('<br>') + '</div>' : '');
+
+      host.innerHTML =
+          card('Source Performance', sp.ready?(sp.score+'/'+sp.total):'—', spBody)
+        + card('Lifecycle', lc.label, lcBody)
+        + card('Resolution Window', rw.ready?rw.recommended:'—', rwBody)
+        + card('Continue / Stop', cs.verdict, csBody);
+    }catch(e){ try{ console.warn('[V6 phase2] render error', e);}catch(_){ } }
+  }
+
+  function snapshot(){ return { sourcePerf:sourcePerf(), lifecycle:lifecycle(), window:resolutionWindow(), continueStop:continueStop() }; }
+
+  function hook(){
+    // Re-render after spins change or original updateAll runs
+    try{
+      var prev = window.updateAll;
+      if(typeof prev === 'function' && !prev.__v6p2){
+        window.updateAll = function(){ var r = prev.apply(this, arguments); try{ render(); }catch(e){} return r; };
+        window.updateAll.__v6p2 = true;
+      }
+    }catch(e){}
+    setInterval(render, 3000);
+    render();
+  }
+
+  function boot(){
+    if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', hook); }
+    else { hook(); }
+  }
+  boot();
+
+  window.ARIT_V6_PHASE2 = { render:render, snapshot:snapshot };
+})();
+</script>
+
 </body>
 </html>
 
