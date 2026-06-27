@@ -11989,5 +11989,470 @@ html, body, button, input, select, textarea, .tab, .card, .ct, .ctl,
 })();
 </script>
 
+<!-- ═══════════════════════════════════════════════════════════════════
+     ARIT V6 — Operator Execution Intelligence (Phase 1)
+     Modules: 1 (Live Decision Coach 2.0) + 9 (Session Bootstrap & Bulk Import)
+       + Spin-tab Bulk Old Results entry (30+, enable/disable, Replace/Append/Bootstrap)
+     APPEND ONLY. Does not modify any existing prediction, wheel, table,
+     adviser, agreement, bankroll, SRIRANGAM, or V5.x logic.
+     All state under ARIT_V6_* localStorage keys. Namespace: window.ARIT_V6.
+     ═══════════════════════════════════════════════════════════════════ -->
+<style>
+  .v6-card{border:1px solid rgba(122,240,255,.30);background:linear-gradient(135deg,rgba(8,14,28,.96),rgba(14,10,28,.96));border-radius:10px;padding:10px 12px;margin-bottom:10px}
+  .v6-card .v6-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+  .v6-title{font-family:var(--font-head,inherit);letter-spacing:1.4px;font-size:.82em;color:#7af0ff}
+  .v6-sub{font-size:.66em;color:var(--muted2);letter-spacing:.5px}
+  .v6-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 0;border-bottom:1px dashed rgba(255,255,255,.06);font-size:.78em}
+  .v6-row:last-child{border-bottom:none}
+  .v6-row span{color:var(--muted2)}
+  .v6-row b{color:#e8f4ff;font-weight:600}
+  .v6-row b.gold{color:#ffd24a}
+  .v6-row b.dim{color:var(--muted2);font-weight:400;font-style:italic}
+  .v6-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media (max-width:720px){.v6-grid{grid-template-columns:1fr}}
+  .v6-state{display:inline-block;padding:2px 8px;border-radius:10px;font-size:.62em;letter-spacing:1.3px;font-weight:700;margin-left:6px;vertical-align:middle}
+  .v6-state.ready{background:rgba(16,200,112,.18);color:#10e088;border:1px solid rgba(16,200,112,.45)}
+  .v6-state.monitor{background:rgba(255,210,74,.15);color:#ffd24a;border:1px solid rgba(255,210,74,.4)}
+  .v6-state.wait{background:rgba(122,240,255,.12);color:#7af0ff;border:1px solid rgba(122,240,255,.35)}
+  .v6-state.defensive{background:rgba(255,80,90,.15);color:#ff7a85;border:1px solid rgba(255,80,90,.4)}
+  .v6-state.dim{background:rgba(255,255,255,.05);color:var(--muted2);border:1px solid rgba(255,255,255,.1)}
+  .v6-bulk-toggle{display:flex;align-items:center;gap:6px;font-size:.7em;color:var(--muted2);cursor:pointer;user-select:none}
+  .v6-bulk-toggle input{cursor:pointer}
+  .v6-bulk-body{margin-top:6px}
+  .v6-bulk-body.hide{display:none}
+  .v6-ta{width:100%;min-height:90px;background:rgba(0,0,0,.45);color:#e8f4ff;border:1px solid rgba(122,240,255,.3);border-radius:8px;padding:8px 10px;font-family:ui-monospace,monospace;font-size:.85em;resize:vertical}
+  .v6-ta:focus{outline:none;border-color:#7af0ff}
+  .v6-controls{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;align-items:center}
+  .v6-modes{display:flex;gap:4px;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:3px}
+  .v6-modes button{background:transparent;border:none;color:var(--muted2);padding:5px 10px;border-radius:6px;font-size:.7em;letter-spacing:1px;font-family:var(--font-head,inherit);cursor:pointer}
+  .v6-modes button.on{background:rgba(122,240,255,.18);color:#7af0ff}
+  .v6-btn{background:rgba(122,240,255,.12);border:1px solid rgba(122,240,255,.45);color:#7af0ff;padding:6px 12px;border-radius:7px;font-family:var(--font-head,inherit);font-size:.72em;letter-spacing:1.2px;cursor:pointer}
+  .v6-btn.primary{background:rgba(16,200,112,.18);border-color:rgba(16,200,112,.5);color:#10e088}
+  .v6-btn:disabled{opacity:.4;cursor:not-allowed}
+  .v6-status{font-size:.72em;color:var(--muted2);margin-top:6px;line-height:1.4}
+  .v6-status .ok{color:#10e088}
+  .v6-status .warn{color:#ffd24a}
+  .v6-status .err{color:#ff7a85}
+  .v6-flag{display:inline-flex;align-items:center;gap:5px;font-size:.7em;color:var(--muted2);cursor:pointer;margin-left:auto}
+  .v6-meta{font-size:.66em;color:var(--muted2);margin-top:6px;letter-spacing:.4px}
+  .v6-meta b{color:#7af0ff;font-weight:600}
+</style>
+
+<script>
+/* eslint-disable */
+(function(){
+  'use strict';
+
+  // ── STATE ─────────────────────────────────────────────────────────
+  var LS_HIST = 'ARIT_V6_HISTORY';
+  var LS_UI   = 'ARIT_V6_UI';
+
+  function loadJSON(k, fb){ try{ var v=localStorage.getItem(k); return v?JSON.parse(v):fb; }catch(e){ return fb; } }
+  function saveJSON(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+
+  var history = loadJSON(LS_HIST, { imported: [], liveStartIndex: 0, enabled: true, lastMode: null, lastImportAt: null });
+  var ui      = loadJSON(LS_UI,   { bulkOpen: false });
+
+  function persistHist(){ saveJSON(LS_HIST, history); }
+  function persistUI(){ saveJSON(LS_UI, ui); }
+
+  function notify(payload){
+    try{
+      if(window.ARIT_V2 && typeof window.ARIT_V2.notify==='function'){
+        window.ARIT_V2.notify(Object.assign({sources:['V6']}, payload));
+      }
+    }catch(e){}
+  }
+
+  // ── PARSER (Module 9) ─────────────────────────────────────────────
+  function parseBulk(text){
+    var accepted=[], rejected=[];
+    if(!text) return {accepted:accepted,rejected:rejected};
+    // OCR auto-fix on raw tokens
+    var tokens = String(text).split(/[\s,;|\/\\\t\r\n]+/).filter(Boolean);
+    for(var i=0;i<tokens.length;i++){
+      var raw = tokens[i];
+      var fixed = raw.replace(/[Oo]/g,'0').replace(/[lI]/g,'1').replace(/[^0-9-]/g,'');
+      if(fixed==='' || fixed==='-'){ rejected.push({token:raw, reason:'non-numeric'}); continue; }
+      var n = parseInt(fixed,10);
+      if(isNaN(n)){ rejected.push({token:raw, reason:'not a number'}); continue; }
+      if(n<0 || n>36){ rejected.push({token:raw, reason:'out of 0–36'}); continue; }
+      accepted.push(n);
+    }
+    return {accepted:accepted, rejected:rejected};
+  }
+
+  // ── IMPORT (Module 9) ─────────────────────────────────────────────
+  // Modes: 'replace' | 'append' | 'bootstrap'
+  function importHistory(numbers, mode){
+    if(!Array.isArray(numbers) || !numbers.length) return {ok:false,reason:'no numbers'};
+    if(typeof window.doEnterSpin !== 'function') return {ok:false,reason:'engine not ready'};
+    mode = mode || 'append';
+
+    var before = (window.spins||[]).length;
+
+    if(mode==='replace'){
+      try{ if(Array.isArray(window.spins)) window.spins.length=0; }catch(e){}
+      try{ if(typeof window.saveState==='function') window.saveState(); }catch(e){}
+      before = 0;
+    }
+
+    // Push each number through the real engine
+    for(var i=0;i<numbers.length;i++){
+      try{ window.doEnterSpin(numbers[i]); }catch(e){ /* keep going */ }
+    }
+
+    history.imported = numbers.slice();
+    history.lastMode = mode;
+    history.lastImportAt = Date.now();
+    history.enabled = true;
+    if(mode==='bootstrap'){
+      // Live session begins at the next manually-entered spin
+      history.liveStartIndex = (window.spins||[]).length;
+    } else if(mode==='replace'){
+      history.liveStartIndex = 0;
+    } else {
+      // append: liveStartIndex marks where imported ends within current spins
+      history.liveStartIndex = before + numbers.length;
+    }
+    persistHist();
+
+    notify({
+      type:'info', color:'#7af0ff',
+      kind:'V6_BULK_IMPORT',
+      title:'V6 Bulk Import',
+      msg:'Imported '+numbers.length+' results ('+mode.toUpperCase()+'). Live session continues from this point.'
+    });
+    return {ok:true, imported:numbers.length, mode:mode};
+  }
+
+  function setHistoryEnabled(flag){
+    var was = !!history.enabled;
+    history.enabled = !!flag;
+    persistHist();
+    // Soft toggle: when disabled and imported exists at the front, slice it off.
+    // When re-enabled, splice the imported chunk back in front.
+    try{
+      if(!Array.isArray(window.spins)) return;
+      var n = (history.imported||[]).length;
+      if(!n) return;
+      if(was && !flag){
+        // remove first n entries (only safe if they match the imported sequence at the front)
+        var head = window.spins.slice(0, n);
+        var match = head.length===n && head.every(function(v,i){ return v===history.imported[i]; });
+        if(match){
+          window.spins.splice(0, n);
+          history.liveStartIndex = Math.max(0, history.liveStartIndex - n);
+          persistHist();
+        }
+      } else if(!was && flag){
+        // re-prepend imported numbers
+        for(var i=n-1;i>=0;i--) window.spins.unshift(history.imported[i]);
+        history.liveStartIndex = history.liveStartIndex + n;
+        persistHist();
+      }
+      if(typeof window.saveState==='function') window.saveState();
+      if(typeof window.updateAll==='function') window.updateAll();
+    }catch(e){}
+    notify({
+      type:'info', color:'#7af0ff', kind:'V6_HIST_TOGGLE',
+      title:'V6 Imported History',
+      msg: flag?'Enabled — analytics now include imported results.':'Disabled — imported results hidden from analytics.'
+    });
+  }
+
+  // ── BULK RESULTS PANEL (Spin tab) ─────────────────────────────────
+  var currentMode = 'append';
+
+  function mountBulkPanel(){
+    var tab = document.getElementById('tab-spin');
+    if(!tab) return;
+    if(document.getElementById('v6-bulk-card')) return;
+
+    var card = document.createElement('div');
+    card.className = 'v6-card';
+    card.id = 'v6-bulk-card';
+    card.innerHTML =
+      '<div class="v6-head">'+
+        '<div>'+
+          '<div class="v6-title">⎘ BULK OLD RESULTS  <span id="v6-bulk-state" class="v6-state dim">OFF</span></div>'+
+          '<div class="v6-sub">Paste 30+ historical numbers — useful for analytics. Toggle on/off anytime.</div>'+
+        '</div>'+
+        '<label class="v6-bulk-toggle"><input type="checkbox" id="v6-bulk-enable"> <span>Enable</span></label>'+
+      '</div>'+
+      '<div id="v6-bulk-body" class="v6-bulk-body hide">'+
+        '<textarea class="v6-ta" id="v6-bulk-ta" placeholder="Paste results (comma, space, tab or newline separated). Example: 5, 12, 0, 27 33 18&#10;OCR noise like O→0 and l/I→1 is auto-corrected."></textarea>'+
+        '<div class="v6-controls">'+
+          '<div class="v6-modes" role="tablist">'+
+            '<button data-mode="replace">REPLACE</button>'+
+            '<button data-mode="append" class="on">APPEND</button>'+
+            '<button data-mode="bootstrap">BOOTSTRAP</button>'+
+          '</div>'+
+          '<button class="v6-btn" id="v6-bulk-validate">VALIDATE</button>'+
+          '<button class="v6-btn primary" id="v6-bulk-import" disabled>IMPORT</button>'+
+          '<label class="v6-flag"><input type="checkbox" id="v6-bulk-use"> <span>Use imported history in analytics</span></label>'+
+        '</div>'+
+        '<div class="v6-status" id="v6-bulk-status">Awaiting input. Minimum 30 results recommended.</div>'+
+        '<div class="v6-meta" id="v6-bulk-meta"></div>'+
+      '</div>';
+
+    tab.insertBefore(card, tab.firstChild);
+
+    var enableEl = card.querySelector('#v6-bulk-enable');
+    var bodyEl   = card.querySelector('#v6-bulk-body');
+    var stateEl  = card.querySelector('#v6-bulk-state');
+    var ta       = card.querySelector('#v6-bulk-ta');
+    var validate = card.querySelector('#v6-bulk-validate');
+    var importBt = card.querySelector('#v6-bulk-import');
+    var status   = card.querySelector('#v6-bulk-status');
+    var meta     = card.querySelector('#v6-bulk-meta');
+    var useFlag  = card.querySelector('#v6-bulk-use');
+    var modeBtns = card.querySelectorAll('.v6-modes button');
+
+    function applyEnabled(){
+      enableEl.checked = !!ui.bulkOpen;
+      if(ui.bulkOpen){ bodyEl.classList.remove('hide'); stateEl.className='v6-state ready'; stateEl.textContent='ON'; }
+      else { bodyEl.classList.add('hide'); stateEl.className='v6-state dim'; stateEl.textContent='OFF'; }
+    }
+    enableEl.addEventListener('change', function(){
+      ui.bulkOpen = !!enableEl.checked; persistUI(); applyEnabled();
+    });
+
+    modeBtns.forEach(function(b){
+      b.addEventListener('click', function(){
+        currentMode = b.getAttribute('data-mode');
+        modeBtns.forEach(function(x){ x.classList.toggle('on', x===b); });
+      });
+    });
+
+    var lastParsed = null;
+    validate.addEventListener('click', function(){
+      lastParsed = parseBulk(ta.value);
+      var a = lastParsed.accepted.length, r = lastParsed.rejected.length;
+      var cls = a>=30 ? 'ok' : (a>0 ? 'warn' : 'err');
+      var msg = '<span class="'+cls+'">Accepted: '+a+'</span> · Rejected: '+r;
+      if(a<30 && a>0) msg += ' <span class="warn">(below 30 — analytics confidence will be limited)</span>';
+      if(r){
+        msg += '<br><span style="opacity:.85">Rejected tokens:</span> ';
+        msg += lastParsed.rejected.slice(0,8).map(function(x){ return '<code>'+x.token+'</code>('+x.reason+')'; }).join(', ');
+        if(lastParsed.rejected.length>8) msg += ' …+'+(lastParsed.rejected.length-8)+' more';
+      }
+      status.innerHTML = msg;
+      importBt.disabled = a===0;
+    });
+
+    importBt.addEventListener('click', function(){
+      if(!lastParsed){ lastParsed = parseBulk(ta.value); }
+      if(!lastParsed.accepted.length){ status.innerHTML='<span class="err">No valid numbers to import.</span>'; return; }
+      var res = importHistory(lastParsed.accepted, currentMode);
+      if(res.ok){
+        status.innerHTML = '<span class="ok">Imported '+res.imported+' results in '+res.mode.toUpperCase()+' mode.</span>';
+        ta.value=''; lastParsed=null; importBt.disabled=true;
+        renderMeta();
+      } else {
+        status.innerHTML = '<span class="err">Import failed: '+(res.reason||'unknown')+'</span>';
+      }
+    });
+
+    useFlag.addEventListener('change', function(){ setHistoryEnabled(!!useFlag.checked); renderMeta(); });
+
+    function renderMeta(){
+      useFlag.checked = !!history.enabled;
+      var n = (history.imported||[]).length;
+      if(!n){ meta.innerHTML = 'No imported history yet.'; return; }
+      var when = history.lastImportAt ? new Date(history.lastImportAt).toLocaleString() : '—';
+      meta.innerHTML = 'Imported <b>'+n+'</b> results · mode <b>'+(history.lastMode||'—').toUpperCase()+'</b> · at '+when+
+        ' · status <b>'+(history.enabled?'ACTIVE':'HIDDEN')+'</b>';
+    }
+
+    applyEnabled();
+    renderMeta();
+  }
+
+  // ── LIVE DECISION COACH 2.0 (Module 1) ────────────────────────────
+  function snapshot(){
+    var s = window.execSnap || {};
+    var ea = window.execAnalytics || {};
+    var ta = ea.tableAnalytics || {};
+    var spinsArr = window.spins || [];
+    function num(v){ if(v==null||v==='')return null; var n=Number(v); return isNaN(n)?null:n; }
+    function pct(v){ var n=num(v); if(n==null)return null; if(n<=1)n*=100; return Math.round(n); }
+    var top = (Array.isArray(s.gold)&&s.gold.slice(0,8))||(Array.isArray(s.zone)&&s.zone.slice(0,8))||[];
+    return {
+      spins: spinsArr.length,
+      bestStreet:  s.bestStreet  || ta.bestStreet  || null,
+      bestDStreet: s.bestDoubleStreet || ta.bestDStreet || ta.bestDoubleStreet || null,
+      bestCorner:  s.bestCorner  || ta.bestCorner  || null,
+      bestSplit:   s.bestSplit   || ta.bestSplit   || null,
+      bestDozen:   s.bestDozen   || ta.bestDozen   || null,
+      bestColumn:  s.bestColumn  || ta.bestColumn  || null,
+      bestOutside: s.bestOutside || ta.bestOutside || null,
+      bestColor:   s.bestColor   || ta.bestColor   || null,
+      bestParity:  s.bestParity  || ta.bestParity  || null,
+      bestHL:      s.bestHL      || ta.bestHL      || null,
+      strength:    pct(s.tableStrength!=null?s.tableStrength:ta.strength),
+      agreement:   pct(s.tableAgreement!=null?s.tableAgreement:ta.agreement),
+      confidence:  pct(s.confidence!=null?s.confidence:ta.confidence),
+      coverage:    s.coverage!=null?s.coverage:null,
+      topNums:     top,
+      predAge:     (window.execLifetime && window.execLifetime.age) || null,
+      predExpected:(window.execLifetime && window.execLifetime.expected) || null,
+      predLifetime:(window.execLifetime && window.execLifetime.lifetime) || null,
+      histAvgWin:  ta.avgWindow || null,
+      histResol:   ta.avgResolution || null,
+      rotation:    (window.envState && window.envState.state) || null
+    };
+  }
+
+  function statusOf(s){
+    if(s.spins<5) return {k:'wait', t:'WAIT', reason:'Awaiting '+(5-s.spins)+' more spin'+(5-s.spins===1?'':'s')+' to activate.'};
+    var score = (s.strength||0)*0.55 + (s.agreement||0)*0.30 + (s.confidence||0)*0.15;
+    if(score>=65) return {k:'ready', t:'READY', reason:'Strong agreement across sources — execute the top picks.'};
+    if(score>=45) return {k:'monitor', t:'MONITOR', reason:'Mixed signals — confirm with one more spin before increasing stake.'};
+    if(score>=25) return {k:'wait', t:'WAIT', reason:'Signals weak — hold position, observe rotation.'};
+    return {k:'defensive', t:'DEFENSIVE', reason:'Coverage compressed or contradictory — defensive mode, no new bets.'};
+  }
+
+  function val(v, fallback){
+    if(v==null || v==='' || (Array.isArray(v)&&!v.length)) return {text: fallback||'Awaiting data', dim:true};
+    if(Array.isArray(v)) return {text: v.join(' · '), dim:false};
+    return {text: String(v), dim:false};
+  }
+
+  function row(label, v, fallback, gold){
+    var r = val(v, fallback);
+    return '<div class="v6-row"><span>'+label+'</span><b class="'+(r.dim?'dim':(gold?'gold':''))+'">'+r.text+'</b></div>';
+  }
+
+  function mountCoach(){
+    var tab = document.getElementById('tab-spin');
+    if(!tab) return;
+    if(document.getElementById('v6-coach-card')) return;
+
+    var card = document.createElement('div');
+    card.className = 'v6-card';
+    card.id = 'v6-coach-card';
+    card.innerHTML =
+      '<div class="v6-head">'+
+        '<div>'+
+          '<div class="v6-title">🧠 LIVE DECISION COACH 2.0 <span id="v6-coach-state" class="v6-state wait">WAIT</span></div>'+
+          '<div class="v6-sub" id="v6-coach-sub">Awaiting data — enter a few spins to activate.</div>'+
+        '</div>'+
+        '<div class="v6-sub" id="v6-coach-spins">Spins: 0</div>'+
+      '</div>'+
+      '<div class="v6-grid">'+
+        '<div><div class="v6-title" style="font-size:.72em;color:#10e088;margin-bottom:4px">◆ INSIDE BETS</div><div id="v6-coach-inside"></div></div>'+
+        '<div><div class="v6-title" style="font-size:.72em;color:#ffd24a;margin-bottom:4px">◇ OUTSIDE BETS</div><div id="v6-coach-outside"></div></div>'+
+      '</div>';
+
+    // Mount right after the bulk card if present, else at top
+    var bulk = document.getElementById('v6-bulk-card');
+    if(bulk && bulk.parentNode===tab) tab.insertBefore(card, bulk.nextSibling);
+    else tab.insertBefore(card, tab.firstChild);
+  }
+
+  function renderCoach(){
+    var ib = document.getElementById('v6-coach-inside');
+    var ob = document.getElementById('v6-coach-outside');
+    var stEl = document.getElementById('v6-coach-state');
+    var subEl = document.getElementById('v6-coach-sub');
+    var sp = document.getElementById('v6-coach-spins');
+    if(!ib||!ob||!stEl) return;
+    var s = snapshot();
+    var st = statusOf(s);
+    stEl.className = 'v6-state '+st.k;
+    stEl.textContent = st.t;
+    if(subEl) subEl.textContent = st.reason;
+    if(sp) sp.textContent = 'Spins: '+s.spins+(s.spins>=120?' · Mature':s.spins>=80?' · Developing':s.spins>=50?' · Limited':' · Learning');
+
+    var insideRec = st.k==='ready' ? 'Cover top numbers + best street/corner.' :
+                    st.k==='monitor' ? 'Light coverage only — wait for one more confirmation.' :
+                    st.k==='defensive' ? 'Stand down — do not bet inside this spin.' :
+                    'Collect more spins before placing inside bets.';
+
+    var outsideRec = st.k==='ready' ? 'Bet best dozen + best column with full stake.' :
+                     st.k==='monitor' ? 'Half-stake on best dozen only.' :
+                     st.k==='defensive' ? 'Skip outside — rotation unstable.' :
+                     'Collect more spins before placing outside bets.';
+
+    ib.innerHTML =
+      row('Status', st.t) +
+      row('Top Numbers', s.topNums, 'Awaiting prediction', true) +
+      row('Best Street', s.bestStreet, 'No active prediction', true) +
+      row('Best Double Street', s.bestDStreet, 'No active prediction', true) +
+      row('Best Corner', s.bestCorner, 'No active prediction') +
+      row('Best Split', s.bestSplit, 'Splits inactive') +
+      row('Agreement', s.agreement!=null?(s.agreement+'%'):null, 'Building…') +
+      row('Confidence', s.confidence!=null?(s.confidence+'%'):null, 'Building…') +
+      row('Prediction Age', s.predAge!=null?(s.predAge+' spins'):null, 'No active prediction') +
+      row('Expected Hit Window', s.predExpected!=null?(s.predExpected+' spins'):null, '—') +
+      row('Historical Avg Window', s.histAvgWin!=null?(s.histAvgWin+' spins'):null, 'No history yet') +
+      row('Current Lifetime', s.predLifetime!=null?(s.predLifetime+' spins'):null, '—') +
+      row('Reason', st.reason) +
+      row('Recommendation', insideRec);
+
+    ob.innerHTML =
+      row('Status', st.t) +
+      row('Best Dozen', s.bestDozen, 'No active prediction', true) +
+      row('Best Column', s.bestColumn, 'No active prediction', true) +
+      row('Best Outside Bet', s.bestOutside, 'No active prediction') +
+      row('Best Color', s.bestColor, 'Building…') +
+      row('Best Odd/Even', s.bestParity, 'Building…') +
+      row('Best High/Low', s.bestHL, 'Building…') +
+      row('Agreement', s.agreement!=null?(s.agreement+'%'):null, 'Building…') +
+      row('Confidence', s.confidence!=null?(s.confidence+'%'):null, 'Building…') +
+      row('Prediction Age', s.predAge!=null?(s.predAge+' spins'):null, 'No active prediction') +
+      row('Historical Resolution', s.histResol!=null?(s.histResol+' spins'):null, 'Awaiting resolutions') +
+      row('Rotation Status', s.rotation, 'Stable') +
+      row('Reason', st.reason) +
+      row('Recommendation', outsideRec);
+  }
+
+  // ── BOOT / WIRING ─────────────────────────────────────────────────
+  function tick(){
+    try{ mountBulkPanel(); }catch(e){}
+    try{ mountCoach(); renderCoach(); }catch(e){}
+  }
+
+  function boot(){
+    if(!document.getElementById('tab-spin')) return setTimeout(boot, 400);
+    tick();
+    if(typeof window.updateAll==='function' && !window.updateAll.__v6Wrapped){
+      var orig = window.updateAll;
+      var wrapped = function(){
+        var r = orig.apply(this, arguments);
+        setTimeout(tick, 0);
+        return r;
+      };
+      wrapped.__v6Wrapped = true;
+      window.updateAll = wrapped;
+    }
+    if(typeof window.renderTab==='function' && !window.renderTab.__v6Wrapped){
+      var o2 = window.renderTab;
+      var w2 = function(t){
+        var r = o2.apply(this, arguments);
+        if(t==='spin') setTimeout(tick, 0);
+        return r;
+      };
+      w2.__v6Wrapped = true;
+      window.renderTab = w2;
+    }
+    setInterval(tick, 2500);
+  }
+
+  // ── PUBLIC NAMESPACE ──────────────────────────────────────────────
+  window.ARIT_V6 = {
+    version: '6.0.1-phase1',
+    bootstrap: { parseBulk: parseBulk, importHistory: importHistory, setHistoryEnabled: setHistoryEnabled },
+    coach: { snapshot: snapshot, statusOf: statusOf, render: renderCoach },
+    state: function(){ return { history: history, ui: ui }; }
+  };
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+
 </body>
 </html>
+
