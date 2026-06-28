@@ -12690,6 +12690,267 @@ html, body, button, input, select, textarea, .tab, .card, .ct, .ctl,
 })();
 </script>
 
+<style id="arit-v6-phase3-style">
+#arit-v6-phase3{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin:14px 0;padding:0}
+#arit-v6-phase3 .v6p3-card{background:rgba(15,23,42,.55);border:1px solid rgba(148,163,184,.18);border-radius:10px;padding:12px 14px;color:#e2e8f0}
+#arit-v6-phase3 .v6p3-card h4{margin:0 0 8px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;display:flex;justify-content:space-between;align-items:center;gap:8px}
+#arit-v6-phase3 .v6p3-card h4 .v6p3-badge{font-size:10px;padding:2px 8px;border-radius:999px;background:#334155;color:#e2e8f0;letter-spacing:.05em;font-weight:700}
+#arit-v6-phase3 .v6p3-row{display:flex;justify-content:space-between;gap:8px;padding:3px 0;font-size:12.5px;border-bottom:1px dashed rgba(148,163,184,.12)}
+#arit-v6-phase3 .v6p3-row:last-child{border-bottom:0}
+#arit-v6-phase3 .v6p3-row span:first-child{color:#94a3b8}
+#arit-v6-phase3 .v6p3-row span:last-child{color:#f1f5f9;font-weight:600;text-align:right}
+#arit-v6-phase3 .v6p3-pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.05em}
+#arit-v6-phase3 .v6p3-pill.go{background:#15803d;color:#dcfce7}
+#arit-v6-phase3 .v6p3-pill.warn{background:#a16207;color:#fef3c7}
+#arit-v6-phase3 .v6p3-pill.stop{background:#b91c1c;color:#fee2e2}
+#arit-v6-phase3 .v6p3-pill.info{background:#1d4ed8;color:#dbeafe}
+#arit-v6-phase3 .v6p3-pill.calm{background:#334155;color:#e2e8f0}
+#arit-v6-phase3 .v6p3-empty{color:#64748b;font-style:italic;font-size:12px}
+#arit-v6-phase3 .v6p3-note{margin-top:6px;font-size:11.5px;color:#cbd5e1;line-height:1.4}
+</style>
+
+<script id="arit-v6-phase3-script">
+/*  ARIT V6 — Phase 3
+    Modules 3 (Current Table Strategy), 4 (Independent Outside Analytics),
+            7 (Fast Shift Engine), 8 (Session Readiness),
+            12 (Session Learning), 13 (Discipline Engine).
+    Self-contained IIFE. window.ARIT_V6_PHASE3 = { render, snapshot }. */
+(function ARIT_V6_PHASE3(){
+  'use strict';
+
+  // ---------- helpers ----------
+  var RED = {1:1,3:1,5:1,7:1,9:1,12:1,14:1,16:1,18:1,19:1,21:1,23:1,25:1,27:1,30:1,32:1,34:1,36:1};
+  function pool(){
+    try{
+      var live = (window.spins||[]).slice();
+      var v6 = window.ARIT_V6 && window.ARIT_V6.state ? window.ARIT_V6.state() : null;
+      var hist = (v6 && v6.history && v6.history.enabled) ? (v6.history.imported||[]) : [];
+      return hist.concat(live);
+    }catch(_){return [];}
+  }
+  function dozen(n){ if(n===0)return 0; if(n<=12)return 1; if(n<=24)return 2; return 3; }
+  function column(n){ if(n===0)return 0; return ((n-1)%3)+1; }
+  function color(n){ if(n===0)return 'green'; return RED[n]?'red':'black'; }
+  function count(arr, fn){ var m={}; for(var i=0;i<arr.length;i++){ var k=fn(arr[i]); m[k]=(m[k]||0)+1; } return m; }
+  function topKey(m){ var bk=null,bv=-1; for(var k in m){ if(m[k]>bv){bv=m[k];bk=k;} } return {key:bk,val:bv}; }
+
+  // ---------- Module 3: Current Table Strategy ----------
+  function modStrategy(){
+    var sp = pool();
+    if(sp.length<6) return {empty:'Need 6+ spins for a strategy call.'};
+    var last20 = sp.slice(-20);
+    var dC = count(last20,dozen), cC = count(last20,column), kC = count(last20,color);
+    var tdz = topKey(dC), tcol = topKey(cC), tcl = topKey(kC);
+    var dominance = Math.max(tdz.val,tcol.val,tcl.val) / last20.length;
+    var label, pill;
+    if(dominance>=0.55){ label='FOCUSED — ride dominant side'; pill='go'; }
+    else if(dominance>=0.40){ label='LEAN — small bias play'; pill='info'; }
+    else { label='SCATTER — neutralize / wait'; pill='warn'; }
+    var rec=[];
+    if(tdz.val/last20.length>=0.40 && tdz.key!=='0') rec.push('Lean dozen '+tdz.key);
+    if(tcol.val/last20.length>=0.40 && tcol.key!=='0') rec.push('Lean column '+tcol.key);
+    if(tcl.val/last20.length>=0.55 && tcl.key!=='green') rec.push('Lean '+tcl.key);
+    if(!rec.length) rec.push('No clear edge — flat / skip');
+    return {label:label,pill:pill,rec:rec.join(' · '),dominance:Math.round(dominance*100)+'%',sample:last20.length};
+  }
+
+  // ---------- Module 4: Independent Outside Analytics ----------
+  function streak(arr, fn){
+    if(!arr.length) return {key:null,len:0};
+    var last = fn(arr[arr.length-1]), n=1;
+    for(var i=arr.length-2;i>=0;i--){ if(fn(arr[i])===last) n++; else break; }
+    return {key:last,len:n};
+  }
+  function modOutside(){
+    var sp = pool();
+    if(sp.length<5) return {empty:'Need 5+ spins.'};
+    var last30 = sp.slice(-30);
+    var dC=count(last30,dozen), cC=count(last30,column), kC=count(last30,color);
+    var sD=streak(last30,dozen), sC=streak(last30,column), sK=streak(last30,color);
+    function pct(m,k){ return Math.round(((m[k]||0)/last30.length)*100)+'%'; }
+    var coldDz=[]; for(var i=1;i<=3;i++) if(((dC[i]||0)/last30.length)<0.20) coldDz.push(i);
+    return {
+      dozen1:pct(dC,1), dozen2:pct(dC,2), dozen3:pct(dC,3),
+      col1:pct(cC,1), col2:pct(cC,2), col3:pct(cC,3),
+      red:pct(kC,'red'), black:pct(kC,'black'),
+      streak: (sD.key&&sD.key!=='0'?('Doz '+sD.key+'×'+sD.len):'-') + ' / ' +
+              (sC.key&&sC.key!=='0'?('Col '+sC.key+'×'+sC.len):'-') + ' / ' +
+              (sK.key?(sK.key+'×'+sK.len):'-'),
+      cold: coldDz.length?('Dozen '+coldDz.join(',')+' under-hit'):'balanced'
+    };
+  }
+
+  // ---------- Module 7: Fast Shift Engine ----------
+  function modShift(){
+    var sp = pool();
+    if(sp.length<14) return {empty:'Need 14+ spins to detect shifts.'};
+    var prev = sp.slice(-14,-7), cur = sp.slice(-7);
+    function sig(arr){ var d=count(arr,dozen), k=count(arr,color);
+      return {d1:d[1]||0,d2:d[2]||0,d3:d[3]||0,r:k.red||0,b:k.black||0}; }
+    var a=sig(prev), b=sig(cur);
+    var delta = Math.abs(a.d1-b.d1)+Math.abs(a.d2-b.d2)+Math.abs(a.d3-b.d3)+Math.abs(a.r-b.r)+Math.abs(a.b-b.b);
+    var pill,label,note;
+    if(delta>=8){ pill='stop'; label='SHIFT DETECTED'; note='Pattern broke last 7 spins. Re-assess before betting.'; }
+    else if(delta>=5){ pill='warn'; label='DRIFT'; note='Regime softening — tighten size.'; }
+    else { pill='go'; label='STABLE'; note='Last 7 align with prior 7.'; }
+    return {pill:pill,label:label,note:note,delta:delta};
+  }
+
+  // ---------- Module 8: Session Readiness ----------
+  function modReadiness(){
+    var sp = pool();
+    var v6 = window.ARIT_V6 && window.ARIT_V6.state ? window.ARIT_V6.state() : null;
+    var histOn = !!(v6 && v6.history && v6.history.enabled && (v6.history.imported||[]).length>=15);
+    var liveOn = (window.spins||[]).length>=5;
+    var shift = modShift();
+    var ready = (histOn||liveOn) && (!shift.pill || shift.pill!=='stop') && sp.length>=10;
+    var checks = [
+      {k:'History loaded (15+)', v: histOn?'YES':'no'},
+      {k:'Live spins (5+)', v: liveOn?'YES':'no'},
+      {k:'Regime stable', v: shift.pill==='go'?'YES':(shift.pill==='warn'?'soft':'no')},
+      {k:'Sample size (10+)', v: sp.length>=10?'YES':'no'}
+    ];
+    return {ready:ready,checks:checks,pill:ready?'go':'warn',label:ready?'READY TO PLAY':'NOT READY'};
+  }
+
+  // ---------- Module 12: Session Learning ----------
+  var LEARN_KEY = 'ARIT_V6_SESSION_LEARN';
+  function learnState(){
+    try{ return JSON.parse(localStorage.getItem(LEARN_KEY))||{spins:0,startedAt:Date.now(),snapshots:[]}; }
+    catch(_){ return {spins:0,startedAt:Date.now(),snapshots:[]}; }
+  }
+  function modLearning(){
+    var sp = (window.spins||[]);
+    var st = learnState();
+    if(sp.length!==st.spins){
+      st.spins = sp.length;
+      var last20 = sp.slice(-20);
+      var dC = count(last20,dozen);
+      st.snapshots.push({n:sp.length,t:Date.now(),topDz:topKey(dC).key});
+      if(st.snapshots.length>50) st.snapshots = st.snapshots.slice(-50);
+      try{ localStorage.setItem(LEARN_KEY,JSON.stringify(st)); }catch(_){}
+    }
+    var mins = Math.max(1,Math.round((Date.now()-st.startedAt)/60000));
+    var rate = st.spins>0 ? (st.spins/mins).toFixed(2) : '0';
+    var changes = 0, prev = null;
+    for(var i=0;i<st.snapshots.length;i++){ if(prev && st.snapshots[i].topDz!==prev) changes++; prev = st.snapshots[i].topDz; }
+    return {spins:st.spins,mins:mins,rate:rate+' /min',dzChanges:changes,
+            note: changes>=4?'High dozen rotation — choppy table':(changes<=1?'Stable dominant dozen':'Normal rotation')};
+  }
+
+  // ---------- Module 13: Discipline Engine ----------
+  function modDiscipline(){
+    var sp = (window.spins||[]);
+    var st = learnState();
+    var mins = Math.max(1,(Date.now()-st.startedAt)/60000);
+    var rate = sp.length/mins;
+    var flags = [], pill='go', label='IN CONTROL';
+    if(rate>3){ flags.push('Spin rate >3/min — slow down'); pill='warn'; label='OVER-PACE'; }
+    if(mins>90){ flags.push('Session >90 min — fatigue risk'); pill='warn'; label='FATIGUE WINDOW'; }
+    if(mins>150){ pill='stop'; label='STOP & BREAK'; }
+    var shift = modShift();
+    if(shift.pill==='stop'){ flags.push('Regime just shifted — do NOT chase'); pill=pill==='stop'?'stop':'warn'; }
+    if(!flags.length) flags.push('No tilt signals.');
+    return {pill:pill,label:label,flags:flags,rate:rate.toFixed(2)+' /min',mins:Math.round(mins)+' min'};
+  }
+
+  // ---------- render ----------
+  function row(k,v){ return '<div class="v6p3-row"><span>'+k+'</span><span>'+v+'</span></div>'; }
+  function card(title,badge,body,pill){
+    var b = badge ? '<span class="v6p3-badge'+(pill?' v6p3-pill '+pill:'')+'">'+badge+'</span>' : '';
+    return '<div class="v6p3-card"><h4>'+title+b+'</h4>'+body+'</div>';
+  }
+  function emptyBody(msg){ return '<div class="v6p3-empty">'+msg+'</div>'; }
+
+  function buildHTML(){
+    var s = modStrategy(), o = modOutside(), sh = modShift(), r = modReadiness(),
+        l = modLearning(), d = modDiscipline();
+    var html = '';
+
+    // Module 3
+    html += card('Table Strategy', s.empty?null:s.label, s.empty?emptyBody(s.empty):
+      row('Dominance', s.dominance) + row('Sample', s.sample+' spins') +
+      '<div class="v6p3-note">'+s.rec+'</div>', s.pill);
+
+    // Module 4
+    html += card('Outside Analytics', o.empty?null:'30-spin', o.empty?emptyBody(o.empty):
+      row('Dozens 1/2/3', o.dozen1+' · '+o.dozen2+' · '+o.dozen3) +
+      row('Columns 1/2/3', o.col1+' · '+o.col2+' · '+o.col3) +
+      row('Red / Black', o.red+' / '+o.black) +
+      row('Live streaks', o.streak) +
+      row('Cold', o.cold), 'info');
+
+    // Module 7
+    html += card('Fast Shift', sh.empty?null:sh.label, sh.empty?emptyBody(sh.empty):
+      row('Delta score', sh.delta) +
+      '<div class="v6p3-note">'+sh.note+'</div>', sh.pill);
+
+    // Module 8
+    var checks = r.checks.map(function(c){ return row(c.k,c.v); }).join('');
+    html += card('Session Readiness', r.label, checks, r.pill);
+
+    // Module 12
+    html += card('Session Learning', 'live',
+      row('Spins', l.spins) + row('Duration', l.mins+' min') +
+      row('Pace', l.rate) + row('Dozen rotations', l.dzChanges) +
+      '<div class="v6p3-note">'+l.note+'</div>', 'calm');
+
+    // Module 13
+    html += card('Discipline', d.label,
+      row('Pace', d.rate) + row('Session', d.mins) +
+      '<div class="v6p3-note">'+d.flags.join(' · ')+'</div>', d.pill);
+
+    return html;
+  }
+
+  function host(){
+    var existing = document.getElementById('arit-v6-phase3');
+    if(existing) return existing;
+    var anchor = document.getElementById('arit-v6-phase2');
+    if(!anchor){
+      var v6 = document.getElementById('arit-v6-coach') || document.querySelector('[data-tab="spin"]') || document.body;
+      anchor = v6;
+    }
+    var h = document.createElement('div');
+    h.id = 'arit-v6-phase3';
+    if(anchor && anchor.parentNode){ anchor.parentNode.insertBefore(h, anchor.nextSibling); }
+    else document.body.appendChild(h);
+    return h;
+  }
+
+  function render(){
+    try{
+      var h = host();
+      if(!h) return;
+      h.innerHTML = buildHTML();
+    }catch(e){ /* swallow */ }
+  }
+
+  function snapshot(){
+    return {
+      strategy: modStrategy(), outside: modOutside(), shift: modShift(),
+      readiness: modReadiness(), learning: modLearning(), discipline: modDiscipline()
+    };
+  }
+
+  function hook(){
+    if(typeof window.updateAll === 'function' && !window.updateAll.__v6p3){
+      var orig = window.updateAll;
+      window.updateAll = function(){ var r = orig.apply(this,arguments); try{render();}catch(_){ } return r; };
+      window.updateAll.__v6p3 = true;
+    }
+  }
+
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded', function(){ hook(); render(); });
+  } else { hook(); render(); }
+  setInterval(function(){ try{hook();render();}catch(_){ } }, 3500);
+
+  window.ARIT_V6_PHASE3 = { render:render, snapshot:snapshot };
+})();
+</script>
+
 </body>
 </html>
+
 
