@@ -12950,7 +12950,184 @@ html, body, button, input, select, textarea, .tab, .card, .ct, .ctl,
 })();
 </script>
 
+<style id="arit-v6-phase4-style">
+#arit-v6-workspace-fab{position:fixed;right:18px;bottom:18px;z-index:9998;background:linear-gradient(135deg,#1d4ed8,#7c3aed);color:#fff;border:0;border-radius:999px;padding:12px 18px;font:600 13px/1 system-ui,sans-serif;letter-spacing:.04em;box-shadow:0 8px 24px rgba(0,0,0,.4);cursor:pointer}
+#arit-v6-workspace-fab:hover{filter:brightness(1.1)}
+#arit-v6-workspace{position:fixed;inset:0;background:rgba(2,6,23,.85);backdrop-filter:blur(6px);z-index:9999;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px}
+#arit-v6-workspace.open{display:flex}
+#arit-v6-workspace .v6ws-panel{width:min(1100px,100%);background:#0f172a;border:1px solid rgba(148,163,184,.2);border-radius:14px;padding:18px 22px;color:#e2e8f0;font:13px/1.5 system-ui,sans-serif}
+#arit-v6-workspace .v6ws-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:12px}
+#arit-v6-workspace .v6ws-head h2{margin:0;font-size:16px;letter-spacing:.08em;text-transform:uppercase;color:#f1f5f9}
+#arit-v6-workspace .v6ws-close{background:#334155;color:#fff;border:0;border-radius:6px;padding:6px 12px;cursor:pointer;font-weight:700}
+#arit-v6-workspace .v6ws-verdict{padding:14px 16px;border-radius:10px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid rgba(148,163,184,.25)}
+#arit-v6-workspace .v6ws-verdict.go{background:linear-gradient(90deg,rgba(21,128,61,.35),rgba(21,128,61,.1))}
+#arit-v6-workspace .v6ws-verdict.warn{background:linear-gradient(90deg,rgba(161,98,7,.35),rgba(161,98,7,.1))}
+#arit-v6-workspace .v6ws-verdict.stop{background:linear-gradient(90deg,rgba(185,28,28,.35),rgba(185,28,28,.1))}
+#arit-v6-workspace .v6ws-verdict h3{margin:0;font-size:18px}
+#arit-v6-workspace .v6ws-verdict .sub{font-size:12px;color:#cbd5e1;margin-top:4px}
+#arit-v6-workspace .v6ws-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+#arit-v6-workspace .v6ws-tile{background:rgba(15,23,42,.6);border:1px solid rgba(148,163,184,.18);border-radius:10px;padding:10px 12px}
+#arit-v6-workspace .v6ws-tile h5{margin:0 0 6px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;display:flex;justify-content:space-between}
+#arit-v6-workspace .v6ws-tile .v{font-size:14px;font-weight:700;color:#f1f5f9}
+#arit-v6-workspace .v6ws-tile .n{font-size:11.5px;color:#cbd5e1;margin-top:4px;line-height:1.4}
+#arit-v6-workspace .v6ws-pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;letter-spacing:.05em}
+#arit-v6-workspace .v6ws-pill.go{background:#15803d;color:#dcfce7}
+#arit-v6-workspace .v6ws-pill.warn{background:#a16207;color:#fef3c7}
+#arit-v6-workspace .v6ws-pill.stop{background:#b91c1c;color:#fee2e2}
+#arit-v6-workspace .v6ws-pill.info{background:#1d4ed8;color:#dbeafe}
+#arit-v6-workspace .v6ws-actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+#arit-v6-workspace .v6ws-actions button{background:#1e293b;color:#e2e8f0;border:1px solid rgba(148,163,184,.25);border-radius:8px;padding:8px 14px;font-weight:600;cursor:pointer;font-size:12px}
+#arit-v6-workspace .v6ws-actions button:hover{background:#334155}
+</style>
+
+<script id="arit-v6-phase4-script">
+/*  ARIT V6 — Phase 4
+    Module 10 (Operator Workspace) — unified command surface that consolidates
+    Coach 2.0 (P1) + Source/Lifecycle/Resolution/Continue-Stop (P2) +
+    Strategy/Outside/Shift/Readiness/Learning/Discipline (P3) into a single
+    operator-facing modal. Self-contained IIFE. window.ARIT_V6_PHASE4. */
+(function ARIT_V6_PHASE4(){
+  'use strict';
+
+  function getP2(){ try{return window.ARIT_V6_PHASE2 && window.ARIT_V6_PHASE2.snapshot();}catch(_){return null;} }
+  function getP3(){ try{return window.ARIT_V6_PHASE3 && window.ARIT_V6_PHASE3.snapshot();}catch(_){return null;} }
+  function getV6(){ try{return window.ARIT_V6 && window.ARIT_V6.state && window.ARIT_V6.state();}catch(_){return null;} }
+
+  // Master verdict — combines Continue/Stop (P2), Shift (P3), Readiness (P3), Discipline (P3).
+  function masterVerdict(){
+    var p2 = getP2() || {}, p3 = getP3() || {};
+    var cs = p2.continueStop || {};
+    var sh = p3.shift || {};
+    var rd = p3.readiness || {};
+    var dc = p3.discipline || {};
+
+    var votes = {go:0,warn:0,stop:0};
+    function tally(pill){ if(!pill) return; if(pill==='go')votes.go++; else if(pill==='warn'||pill==='hold')votes.warn++; else if(pill==='stop')votes.stop++; }
+    tally(cs.pill || cs.verdict);
+    tally(sh.pill);
+    tally(rd.pill);
+    tally(dc.pill);
+
+    var verdict, label, reason;
+    if(votes.stop>=1){ verdict='stop'; label='STAND DOWN'; reason='One or more engines triggered STOP.'; }
+    else if(votes.warn>=2){ verdict='warn'; label='PROCEED WITH CAUTION'; reason='Multiple soft warnings active.'; }
+    else if(votes.go>=2){ verdict='go'; label='CLEAR TO PLAY'; reason='Engines aligned. Stay disciplined.'; }
+    else { verdict='warn'; label='OBSERVE'; reason='Insufficient signal — gather more spins.'; }
+    return {verdict:verdict,label:label,reason:reason,votes:votes};
+  }
+
+  function tile(title,badge,value,note,pill){
+    var b = badge ? '<span class="v6ws-pill '+(pill||'info')+'">'+badge+'</span>' : '';
+    return '<div class="v6ws-tile"><h5>'+title+b+'</h5><div class="v">'+(value||'—')+'</div>'+
+           (note?'<div class="n">'+note+'</div>':'')+'</div>';
+  }
+
+  function buildBody(){
+    var v6 = getV6() || {}, p2 = getP2() || {}, p3 = getP3() || {};
+    var hist = (v6.history && v6.history.imported) ? v6.history.imported.length : 0;
+    var live = (window.spins||[]).length;
+    var histOn = !!(v6.history && v6.history.enabled);
+
+    var src = p2.sourcePerf || {}, lc = p2.lifecycle || {}, rw = p2.resolution || {}, cs = p2.continueStop || {};
+    var st = p3.strategy || {}, ou = p3.outside || {}, sh = p3.shift || {}, rd = p3.readiness || {},
+        ln = p3.learning || {}, dc = p3.discipline || {};
+
+    var grid = '';
+    grid += tile('Session', 'data', live+' live · '+hist+' history', histOn?'History ENABLED in analytics':'History off');
+    grid += tile('Lifecycle', lc.phase||'-', lc.phase||'WARMUP', lc.note||'', 'info');
+    grid += tile('Strategy', st.label?st.label.split(' ')[0]:'-', st.dominance||'-', st.rec||st.empty||'', st.pill||'info');
+    grid += tile('Continue / Stop', (cs.verdict||cs.label||'-'), cs.score!=null?('Score '+cs.score):'-', (cs.reasons&&cs.reasons.join?cs.reasons.join(' · '):''), cs.pill||'info');
+    grid += tile('Fast Shift', sh.label||'-', sh.delta!=null?('Δ '+sh.delta):'-', sh.note||sh.empty||'', sh.pill||'info');
+    grid += tile('Readiness', rd.label||'-', rd.ready?'GO':'WAIT',
+      (rd.checks?rd.checks.map(function(c){return c.k+': '+c.v;}).join(' · '):''), rd.pill||'warn');
+    grid += tile('Outside (30)', 'live', (ou.dozen1?('D '+ou.dozen1+'/'+ou.dozen2+'/'+ou.dozen3):'-'),
+      ou.streak?('Streaks: '+ou.streak):(ou.empty||''), 'info');
+    grid += tile('Resolution Window', 'wait', rw.window||rw.recommendation||'-', rw.note||'', 'info');
+    grid += tile('Source Performance', 'top', src.topSource||src.leader||'-', src.note||(src.empty||''), 'info');
+    grid += tile('Discipline', dc.label||'-', dc.rate||'-', (dc.flags?dc.flags.join(' · '):''), dc.pill||'info');
+    grid += tile('Learning', 'session', (ln.spins||0)+' spins / '+(ln.mins||0)+'m', ln.note||'', 'info');
+
+    var mv = masterVerdict();
+    var verdict = '<div class="v6ws-verdict '+mv.verdict+'"><div><h3>'+mv.label+'</h3><div class="sub">'+mv.reason+'</div></div>'+
+                  '<div><span class="v6ws-pill '+mv.verdict+'">GO '+mv.votes.go+' · WARN '+mv.votes.warn+' · STOP '+mv.votes.stop+'</span></div></div>';
+
+    return verdict + '<div class="v6ws-grid">'+grid+'</div>' +
+      '<div class="v6ws-actions">'+
+        '<button data-act="refresh">Refresh</button>'+
+        '<button data-act="copy">Copy Snapshot</button>'+
+        '<button data-act="close">Close</button>'+
+      '</div>';
+  }
+
+  function ensureFab(){
+    if(document.getElementById('arit-v6-workspace-fab')) return;
+    var b = document.createElement('button');
+    b.id='arit-v6-workspace-fab';
+    b.type='button';
+    b.textContent='⌘ Operator Workspace';
+    b.addEventListener('click', open);
+    document.body.appendChild(b);
+  }
+  function ensureModal(){
+    var m = document.getElementById('arit-v6-workspace');
+    if(m) return m;
+    m = document.createElement('div');
+    m.id='arit-v6-workspace';
+    m.innerHTML = '<div class="v6ws-panel"><div class="v6ws-head"><h2>ARIT V6 — Operator Workspace</h2>'+
+                  '<button class="v6ws-close" type="button" data-act="close">Close</button></div>'+
+                  '<div id="arit-v6-workspace-body"></div></div>';
+    document.body.appendChild(m);
+    m.addEventListener('click', function(e){
+      if(e.target===m){ close(); return; }
+      var act = e.target && e.target.getAttribute && e.target.getAttribute('data-act');
+      if(act==='close') close();
+      else if(act==='refresh') refresh();
+      else if(act==='copy'){
+        try{
+          var snap = snapshot();
+          var txt = JSON.stringify(snap,null,2);
+          navigator.clipboard && navigator.clipboard.writeText(txt);
+          if(window.ARIT_V2 && window.ARIT_V2.notify) window.ARIT_V2.notify('Workspace snapshot copied','info');
+        }catch(_){}
+      }
+    });
+    return m;
+  }
+  function refresh(){
+    var body = document.getElementById('arit-v6-workspace-body');
+    if(body) body.innerHTML = buildBody();
+  }
+  function open(){
+    ensureModal();
+    refresh();
+    document.getElementById('arit-v6-workspace').classList.add('open');
+  }
+  function close(){
+    var m = document.getElementById('arit-v6-workspace');
+    if(m) m.classList.remove('open');
+  }
+  function snapshot(){
+    return {at:new Date().toISOString(), verdict:masterVerdict(), phase2:getP2(), phase3:getP3(),
+            history:{count:(getV6()&&getV6().history&&getV6().history.imported||[]).length,
+                     enabled:!!(getV6()&&getV6().history&&getV6().history.enabled)},
+            live:(window.spins||[]).length};
+  }
+
+  function boot(){ ensureFab(); }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+  // Auto-refresh body if open
+  setInterval(function(){
+    var m = document.getElementById('arit-v6-workspace');
+    if(m && m.classList.contains('open')) refresh();
+  }, 3000);
+
+  window.ARIT_V6_PHASE4 = { open:open, close:close, refresh:refresh, snapshot:snapshot, masterVerdict:masterVerdict };
+})();
+</script>
+
 </body>
 </html>
+
 
 
