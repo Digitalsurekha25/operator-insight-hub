@@ -12270,58 +12270,398 @@ html, body, button, input, select, textarea, .tab, .card, .ct, .ctl,
   }
 
   // ── LIVE DECISION COACH 2.0 (Module 1) ────────────────────────────
+  // Source priority (NEVER skip a higher tier):
+  //   1) Existing ARIT Engine        — buildExecution(), ARIT_V2._state, settings, DOM
+  //   2) Existing Execution Analytics — execAnalytics.{regimeHistory,activePlan,...}
+  //   3) Existing V6 Modules         — ARIT_V6_PHASE2/3/4 snapshots
+  //   4) Execution State             — execSnap, execLifetime, execStats
+  //   5) Fallback Display Helper     — isolated, marked fallback-only
+  // Coach reuses values. It MUST NOT recompute Agreement, Source Performance,
+  // Resolution Analytics, Continue/Stop, Behaviour Engine, or Active Play Plan.
+
+  var COACH_DEBUG = (function(){
+    try{ if(localStorage.getItem('ARIT_V6_COACH_DEBUG')==='0') return false; }catch(_){}
+    return window.ARIT_V6_COACH_DEBUG !== false;
+  })();
+  var _sourceMap = {};      // field -> {field, primary, secondary, fallback, used, status}
+  var _printedMap = false;  // print once per session
+
+  function _recordSource(field, primary, secondary, fallback, used){
+    var status = 'Missing';
+    if(used){
+      if(used===primary) status='Connected';
+      else if(used===secondary) status='Secondary';
+      else if(used===fallback) status='Fallback';
+      else status='Secondary';
+    }
+    _sourceMap[field] = {
+      field: field,
+      primary: primary || '—',
+      secondary: secondary || '—',
+      fallback: fallback || '—',
+      used: used || '—',
+      status: status
+    };
+  }
+  // Resolve a field by walking the source ladder top→bottom.
+  // ladder: [{name, get}]. Last entry is treated as the fallback for status tagging.
+  function pick(field, ladder){
+    var primary  = ladder[0] && ladder[0].name;
+    var fallback = ladder.length>1 ? ladder[ladder.length-1].name : null;
+    var secondary= ladder.length>2 ? ladder[1].name : null;
+    for(var i=0;i<ladder.length;i++){
+      var v=null;
+      try{ v = ladder[i].get(); }catch(_){ v=null; }
+      var empty = (v==null || v==='' || (Array.isArray(v) && !v.length));
+      if(!empty){
+        var used = ladder[i].name;
+        _recordSource(field, primary, secondary, fallback, used);
+        var isFallback = (ladder.length>1 && i===ladder.length-1);
+        return { value:v, source:used, isFallback:isFallback, idx:i };
+      }
+    }
+    _recordSource(field, primary, secondary, fallback, null);
+    return { value:null, source:null, isFallback:false, idx:-1 };
+  }
+
+  // --- safe accessors to existing sources (read-only) ---
+  function _safeBuildExec(){
+    try{
+      if(typeof window.buildExecution==='function' && typeof window.getFS==='function'){
+        return window.buildExecution(window.getFS());
+      }
+    }catch(_){}
+    return null;
+  }
+  function _execA(){ try{ return window.execAnalytics||null; }catch(_){ return null; } }
+  function _p2(){ try{ return window.ARIT_V6_PHASE2 && window.ARIT_V6_PHASE2.snapshot(); }catch(_){ return null; } }
+  function _p3(){ try{ return window.ARIT_V6_PHASE3 && window.ARIT_V6_PHASE3.snapshot(); }catch(_){ return null; } }
+  function _p4mv(){ try{ return window.ARIT_V6_PHASE4 && window.ARIT_V6_PHASE4.masterVerdict(); }catch(_){ return null; } }
+  function _effSpins(){
+    var live = (window.spins||[]).slice();
+    try{
+      var st = window.ARIT_V6 && window.ARIT_V6.state && window.ARIT_V6.state();
+      if(st && st.history && st.history.enabled && Array.isArray(st.history.imported) && st.history.imported.length){
+        return st.history.imported.concat(live);
+      }
+    }catch(_){}
+    return live;
+  }
+
+  // --- fallback-only helpers (isolated, never used unless ladder exhausted) ---
+  var _REDS_FB = {1:1,3:1,5:1,7:1,9:1,12:1,14:1,16:1,18:1,19:1,21:1,23:1,25:1,27:1,30:1,32:1,34:1,36:1};
+  function _fb_freq(arr, top){
+    var m={}; for(var i=0;i<arr.length;i++){ m[arr[i]]=(m[arr[i]]||0)+1; }
+    return Object.keys(m).sort(function(a,b){return m[b]-m[a];}).map(Number).slice(0, top||8);
+  }
+  function _fb_majority(arr, fn){
+    var c={}; for(var i=0;i<arr.length;i++){ var k=fn(arr[i]); if(k==null) continue; c[k]=(c[k]||0)+1; }
+    var bk=null,bv=-1; for(var k in c){ if(c[k]>bv){bv=c[k];bk=k;} }
+    return bk;
+  }
+  function _fb_doz(x){ if(x==null||x===0) return null; return x<=12?1:x<=24?2:3; }
+  function _fb_col(x){ if(x==null||x===0) return null; return ((x-1)%3)+1; }
+  function _fb_color(x){ if(x==null||x===0) return null; return _REDS_FB[x]?'Red':'Black'; }
+  function _fb_par(x){ if(x==null||x===0) return null; return (x%2)?'Odd':'Even'; }
+  function _fb_hl(x){ if(x==null||x===0) return null; return x<=18?'Low':'High'; }
+
   function snapshot(){
-    var s = window.execSnap || {};
-    var ea = window.execAnalytics || {};
-    var ta = ea.tableAnalytics || {};
-    var spinsArr = window.spins || [];
-    function num(v){ if(v==null||v==='')return null; var n=Number(v); return isNaN(n)?null:n; }
-    function pct(v){ var n=num(v); if(n==null)return null; if(n<=1)n*=100; return Math.round(n); }
-    var top = (Array.isArray(s.gold)&&s.gold.slice(0,8))||(Array.isArray(s.zone)&&s.zone.slice(0,8))||[];
+    _sourceMap = {}; // rebuild per snapshot
+    var be = _safeBuildExec();
+    var ea = _execA();
+    var P2 = _p2(), P3 = _p3(), MV = _p4mv();
+    var spinsArr = (window.spins||[]);
+    var sp = _effSpins();
+    var n  = sp.length;
+
+    var topNumbers = pick('topNumbers', [
+      { name:'ARIT/buildExecution', get:function(){
+          if(!be) return null;
+          var arr = (be.gold && be.gold.length ? be.gold
+                    : (be.silver && be.silver.length ? be.silver
+                       : (be.clusterZone||[])));
+          return arr && arr.length ? arr.slice(0,8) : null;
+      }},
+      { name:'ExecAnalytics.activePlan', get:function(){
+          if(!ea || !Array.isArray(ea.activePlan) || !ea.activePlan.length || !be) return null;
+          var k = ea.activePlan[0].key;
+          if(k==='gold')   return (be.gold||[]).slice(0,8);
+          if(k==='silver') return (be.silver||[]).slice(0,8);
+          if(k==='zone')   return (be.clusterZone||[]).slice(0,8);
+          return null;
+      }},
+      { name:'Fallback/Freq30', get:function(){
+          if(n<6) return null;
+          return _fb_freq(sp.slice(-30), 8);
+      }}
+    ]);
+
+    var bestDozen = pick('bestDozen', [
+      { name:'ARIT/buildExecution', get:function(){ return be && be.bestDozen || null; } },
+      { name:'V6_P3.outside', get:function(){
+          if(!P3 || !P3.outside || P3.outside.empty) return null;
+          var o=P3.outside;
+          var a=[['1',parseInt(o.dozen1,10)||0],['2',parseInt(o.dozen2,10)||0],['3',parseInt(o.dozen3,10)||0]];
+          a.sort(function(x,y){return y[1]-x[1];});
+          return 'D'+a[0][0]+' ('+a[0][1]+'%)';
+      }},
+      { name:'Fallback/Last20Maj', get:function(){
+          if(n<6) return null; var m=_fb_majority(sp.slice(-20),_fb_doz); return m?'D'+m:null;
+      }}
+    ]);
+
+    var bestColumn = pick('bestColumn', [
+      { name:'ARIT/buildExecution', get:function(){ return be && be.bestColumn || null; } },
+      { name:'V6_P3.outside', get:function(){
+          if(!P3 || !P3.outside || P3.outside.empty) return null;
+          var o=P3.outside;
+          var a=[['1',parseInt(o.col1,10)||0],['2',parseInt(o.col2,10)||0],['3',parseInt(o.col3,10)||0]];
+          a.sort(function(x,y){return y[1]-x[1];});
+          return 'C'+a[0][0]+' ('+a[0][1]+'%)';
+      }},
+      { name:'Fallback/Last20Maj', get:function(){
+          if(n<6) return null; var m=_fb_majority(sp.slice(-20),_fb_col); return m?'C'+m:null;
+      }}
+    ]);
+
+    var bestColor = pick('bestColor', [
+      { name:'ARIT/buildExecution', get:function(){ return be && be.bestColor || null; } },
+      { name:'V6_P3.outside', get:function(){
+          if(!P3 || !P3.outside || P3.outside.empty) return null;
+          var r=parseInt(P3.outside.red,10)||0, b=parseInt(P3.outside.black,10)||0;
+          if(!r && !b) return null;
+          return r>=b ? ('Red ('+r+'%)') : ('Black ('+b+'%)');
+      }},
+      { name:'Fallback/Last20Maj', get:function(){
+          if(n<6) return null; return _fb_majority(sp.slice(-20),_fb_color);
+      }}
+    ]);
+
+    var bestParity = pick('bestParity', [
+      { name:'ARIT/buildExecution', get:function(){ return be && be.bestParity || null; } },
+      { name:'Fallback/Last20Maj', get:function(){
+          if(n<6) return null; return _fb_majority(sp.slice(-20),_fb_par);
+      }}
+    ]);
+
+    var bestHL = pick('bestHL', [
+      { name:'ARIT/buildExecution', get:function(){ return be && be.bestHL || null; } },
+      { name:'Fallback/Last20Maj', get:function(){
+          if(n<6) return null; return _fb_majority(sp.slice(-20),_fb_hl);
+      }}
+    ]);
+
+    var bestStreet = pick('bestStreet', [
+      { name:'ARIT/buildExecution', get:function(){ return be && be.bestStreet || null; } },
+      { name:'V6_P3.strategy',      get:function(){ return P3 && P3.strategy && !P3.strategy.empty ? P3.strategy.rec : null; } }
+    ]);
+    var bestDStreet = pick('bestDoubleStreet', [
+      { name:'ARIT/buildExecution', get:function(){ return be && (be.bestDoubleStreet || be.bestDStreet) || null; } }
+    ]);
+    var bestCorner = pick('bestCorner', [
+      { name:'ARIT/buildExecution', get:function(){ return be && be.bestCorner || null; } }
+    ]);
+    var bestSplit = pick('bestSplit', [
+      { name:'ARIT/buildExecution', get:function(){ return be && be.bestSplit || null; } }
+    ]);
+
+    // Agreement — REUSE ONLY (never compute a new one)
+    var agreement = pick('agreement', [
+      { name:'ARIT/buildExecution.rows', get:function(){
+          if(!be || !be.rows || !be.rows.length) return null;
+          var top=null;
+          for(var i=0;i<be.rows.length;i++){ if(be.rows[i].tier==='gold'){ top=be.rows[i]; break; } }
+          if(!top) top = be.rows[0];
+          if(!top) return null;
+          var srcs=[];
+          if(top.p)    srcs.push('Predict');
+          if(top.w)    srcs.push('Wheel');
+          if(top.aPrim) srcs.push('Adv·P');
+          else if(top.aSec) srcs.push('Adv·S');
+          if(srcs.length<2) return null;
+          return srcs.join(' + ');
+      }}
+    ]);
+
+    var confidence = pick('confidence', [
+      { name:'ARIT/buildExecution.conf', get:function(){
+          if(!be || typeof be.conf!=='number') return null;
+          // be.conf is on a 0..10 scale → percent
+          return Math.round(be.conf*10);
+      }},
+      { name:'V6_P4.masterVerdict', get:function(){
+          if(!MV || !MV.votes) return null;
+          var t=(MV.votes.go||0)+(MV.votes.warn||0)+(MV.votes.stop||0);
+          if(!t) return null;
+          return Math.max(0, Math.min(100, Math.round(((MV.votes.go - MV.votes.stop)/t)*50 + 50)));
+      }},
+      { name:'Fallback/SampleSize', get:function(){
+          if(!n) return null;
+          return Math.min(100, Math.round(n*0.8));
+      }}
+    ]);
+
+    var strength = pick('strength', [
+      { name:'ExecAnalytics.regimeHistory', get:function(){
+          if(!ea || !Array.isArray(ea.regimeHistory) || !ea.regimeHistory.length) return null;
+          var last = ea.regimeHistory.slice(-10).map(function(r){return r.winner;});
+          var c={}; last.forEach(function(w){ c[w]=(c[w]||0)+1; });
+          var bk=null,bv=0; for(var k in c){ if(c[k]>bv){bv=c[k];bk=k;} }
+          if(!bk || bk==='MISS') return null;
+          return bk.toUpperCase()+' · '+Math.round(bv/last.length*100)+'%';
+      }},
+      { name:'V6_P2.lifecycle', get:function(){
+          if(!P2 || !P2.lifecycle) return null;
+          return P2.lifecycle.label || P2.lifecycle.phase || null;
+      }}
+    ]);
+
+    var predAge = pick('predAge', [
+      { name:'execLifetime', get:function(){
+          var el=window.execLifetime; if(!el) return null;
+          return Math.max(0, (window.spins||[]).length - el.spin) + ' spins';
+      }}
+    ]);
+    var predExpected = pick('predExpected', [
+      { name:'execLifetime', get:function(){
+          var el=window.execLifetime; if(!el || el.life==null) return null;
+          return el.life+' spins';
+      }}
+    ]);
+    var predLifetime = pick('predLifetime', [
+      { name:'execSnap', get:function(){
+          var es=window.execSnap; if(!es) return null;
+          return es.life+' spins (age '+(es.age||0)+')';
+      }}
+    ]);
+
+    var histAvgWin = pick('histAvgWindow', [
+      { name:'V6_P2.resolutionWindow', get:function(){
+          if(!P2 || !P2.window || !P2.window.ready || P2.window.avgRepeat==null) return null;
+          return P2.window.avgRepeat+' spins';
+      }}
+    ]);
+    var histResol = pick('histResolution', [
+      { name:'V6_P2.resolutionWindow', get:function(){
+          if(!P2 || !P2.window || !P2.window.ready || P2.window.avgZone==null) return null;
+          return P2.window.avgZone+' spins';
+      }}
+    ]);
+
+    var rotation = pick('rotation', [
+      { name:'V6_P3.shift', get:function(){
+          if(!P3 || !P3.shift || P3.shift.empty) return null;
+          return P3.shift.label + (P3.shift.delta!=null?(' (Δ'+P3.shift.delta+')'):'');
+      }},
+      { name:'ExecAnalytics.regimeStreaks', get:function(){
+          if(!ea || !ea.regimeStreaks) return null;
+          var bk=null,bv=0;
+          for(var k in ea.regimeStreaks){ if(ea.regimeStreaks[k]>bv){ bv=ea.regimeStreaks[k]; bk=k; } }
+          return bk && bv>0 ? (bk.toUpperCase()+' streak '+bv) : null;
+      }}
+    ]);
+
+    var cs = pick('continueStop', [
+      { name:'V6_P2.continueStop', get:function(){
+          if(!P2 || !P2.continueStop || !P2.continueStop.verdict) return null;
+          return P2.continueStop.verdict + (P2.continueStop.score!=null ? (' ('+P2.continueStop.score+')') : '');
+      }},
+      { name:'V6_P4.masterVerdict', get:function(){
+          return MV && MV.label ? MV.label : null;
+      }}
+    ]);
+
+    var disc = pick('discipline', [
+      { name:'V6_P3.discipline', get:function(){
+          if(!P3 || !P3.discipline) return null;
+          return P3.discipline.label + (P3.discipline.rate?(' · '+P3.discipline.rate):'');
+      }}
+    ]);
+
+    var bestOutside = pick('bestOutside', [
+      { name:'ARIT/buildExecution', get:function(){ return be && be.bestOutside || null; } },
+      { name:'Derived/Dozen+Column', get:function(){
+          if(!bestDozen.value || !bestColumn.value) return null;
+          return bestDozen.value + ' / ' + bestColumn.value;
+      }}
+    ]);
+
+    var statusInputs = {
+      conf: (be && typeof be.conf==='number') ? be.conf : null,
+      agreement: agreement.value,
+      masterVerdict: MV ? MV.verdict : null,
+      readiness: P3 && P3.readiness ? !!P3.readiness.ready : null,
+      shiftPill: P3 && P3.shift ? P3.shift.pill : null,
+      discPill:  P3 && P3.discipline ? P3.discipline.pill : null
+    };
+
     return {
-      spins: spinsArr.length,
-      bestStreet:  s.bestStreet  || ta.bestStreet  || null,
-      bestDStreet: s.bestDoubleStreet || ta.bestDStreet || ta.bestDoubleStreet || null,
-      bestCorner:  s.bestCorner  || ta.bestCorner  || null,
-      bestSplit:   s.bestSplit   || ta.bestSplit   || null,
-      bestDozen:   s.bestDozen   || ta.bestDozen   || null,
-      bestColumn:  s.bestColumn  || ta.bestColumn  || null,
-      bestOutside: s.bestOutside || ta.bestOutside || null,
-      bestColor:   s.bestColor   || ta.bestColor   || null,
-      bestParity:  s.bestParity  || ta.bestParity  || null,
-      bestHL:      s.bestHL      || ta.bestHL      || null,
-      strength:    pct(s.tableStrength!=null?s.tableStrength:ta.strength),
-      agreement:   pct(s.tableAgreement!=null?s.tableAgreement:ta.agreement),
-      confidence:  pct(s.confidence!=null?s.confidence:ta.confidence),
-      coverage:    s.coverage!=null?s.coverage:null,
-      topNums:     top,
-      predAge:     (window.execLifetime && window.execLifetime.age) || null,
-      predExpected:(window.execLifetime && window.execLifetime.expected) || null,
-      predLifetime:(window.execLifetime && window.execLifetime.lifetime) || null,
-      histAvgWin:  ta.avgWindow || null,
-      histResol:   ta.avgResolution || null,
-      rotation:    (window.envState && window.envState.state) || null
+      spins: spinsArr.length, effSpins: n,
+      topNums: topNumbers,
+      bestStreet: bestStreet, bestDStreet: bestDStreet, bestCorner: bestCorner, bestSplit: bestSplit,
+      bestDozen: bestDozen, bestColumn: bestColumn, bestOutside: bestOutside,
+      bestColor: bestColor, bestParity: bestParity, bestHL: bestHL,
+      agreement: agreement, confidence: confidence, strength: strength,
+      predAge: predAge, predExpected: predExpected, predLifetime: predLifetime,
+      histAvgWin: histAvgWin, histResol: histResol,
+      rotation: rotation, cs: cs, disc: disc,
+      statusInputs: statusInputs,
+      _sources: _sourceMap
     };
   }
 
   function statusOf(s){
-    if(s.spins<5) return {k:'wait', t:'WAIT', reason:'Awaiting '+(5-s.spins)+' more spin'+(5-s.spins===1?'':'s')+' to activate.'};
-    var score = (s.strength||0)*0.55 + (s.agreement||0)*0.30 + (s.confidence||0)*0.15;
-    if(score>=65) return {k:'ready', t:'READY', reason:'Strong agreement across sources — execute the top picks.'};
-    if(score>=45) return {k:'monitor', t:'MONITOR', reason:'Mixed signals — confirm with one more spin before increasing stake.'};
-    if(score>=25) return {k:'wait', t:'WAIT', reason:'Signals weak — hold position, observe rotation.'};
-    return {k:'defensive', t:'DEFENSIVE', reason:'Coverage compressed or contradictory — defensive mode, no new bets.'};
+    var n = s.spins;
+    if(n<5) return {k:'wait', t:'WAIT',
+      reason:'Awaiting '+(5-n)+' more spin'+(5-n===1?'':'s')+' to activate.', fallback:false};
+    var si = s.statusInputs || {};
+    var score = 0, why=[];
+    if(typeof si.conf==='number' && si.conf>=6){ score+=2; why.push('exec conf '+si.conf.toFixed(1)); }
+    if(si.agreement){ score+=2; why.push('agreement'); }
+    if(si.masterVerdict==='go'){ score+=2; why.push('verdict GO'); }
+    else if(si.masterVerdict==='stop'){ score-=3; why.push('verdict STOP'); }
+    if(si.readiness===true){ score+=1; why.push('ready'); }
+    if(si.shiftPill==='stop'){ score-=2; why.push('regime shift'); }
+    if(si.discPill==='warn' || si.discPill==='stop'){ score-=1; why.push('discipline '+si.discPill); }
+
+    var hasSignal = (typeof si.conf==='number') || !!si.agreement || !!si.masterVerdict || si.readiness!=null;
+    if(!hasSignal){
+      // Cold-start: sample-size gate only (clearly flagged fallback)
+      if(n<15) return {k:'monitor', t:'MONITOR',
+        reason:'Cold start — '+n+' spins, building baseline.', fallback:true};
+      return {k:'wait', t:'WAIT',
+        reason:'No engine signal yet — gather more resolved predictions.', fallback:true};
+    }
+
+    var k,t;
+    if(score>=5){ k='ready';     t='READY'; }
+    else if(score>=2){ k='monitor';   t='MONITOR'; }
+    else if(score>=0){ k='wait';      t='WAIT'; }
+    else             { k='defensive'; t='DEFENSIVE'; }
+    return {k:k, t:t,
+      reason: why.length ? ('Score '+score+' · '+why.join(' · ')) : ('Composite score '+score),
+      fallback:false};
   }
 
-  function val(v, fallback){
-    if(v==null || v==='' || (Array.isArray(v)&&!v.length)) return {text: fallback||'Awaiting data', dim:true};
-    if(Array.isArray(v)) return {text: v.join(' · '), dim:false};
-    return {text: String(v), dim:false};
+  // --- pick-aware row renderer (keeps original layout, adds ƒ marker for fallback) ---
+  function rowP(label, picked, fallbackMsg, gold){
+    var empty = !picked || picked.value==null || picked.value==='' ||
+                (Array.isArray(picked.value) && !picked.value.length);
+    if(empty){
+      return '<div class="v6-row"><span>'+label+'</span><b class="dim">'+(fallbackMsg||'—')+'</b></div>';
+    }
+    var v = Array.isArray(picked.value) ? picked.value.join(' · ') : String(picked.value);
+    var cls = picked.isFallback ? 'dim' : (gold ? 'gold' : '');
+    var mark = picked.isFallback
+      ? ' <small style="opacity:.55" title="Fallback display value — primary source unavailable">ƒ</small>'
+      : '';
+    var titleAttr = picked.source ? (' title="source: '+picked.source+'"') : '';
+    return '<div class="v6-row"'+titleAttr+'><span>'+label+'</span><b class="'+cls+'">'+v+mark+'</b></div>';
   }
-
+  // Legacy wrapper kept for any external caller using {value:..} pattern
   function row(label, v, fallback, gold){
-    var r = val(v, fallback);
-    return '<div class="v6-row"><span>'+label+'</span><b class="'+(r.dim?'dim':(gold?'gold':''))+'">'+r.text+'</b></div>';
+    if(v && typeof v==='object' && 'value' in v) return rowP(label, v, fallback, gold);
+    return rowP(label, {value:v, isFallback:false, source:null}, fallback, gold);
   }
 
   function mountCoach(){
@@ -12345,10 +12685,26 @@ html, body, button, input, select, textarea, .tab, .card, .ct, .ctl,
         '<div><div class="v6-title" style="font-size:.72em;color:#ffd24a;margin-bottom:4px">◇ OUTSIDE BETS</div><div id="v6-coach-outside"></div></div>'+
       '</div>';
 
-    // Mount right after the bulk card if present, else at top
     var bulk = document.getElementById('v6-bulk-card');
     if(bulk && bulk.parentNode===tab) tab.insertBefore(card, bulk.nextSibling);
     else tab.insertBefore(card, tab.firstChild);
+  }
+
+  function _printSourceMap(){
+    try{
+      var rows = _sourceMap;
+      if(!rows || !Object.keys(rows).length) return rows;
+      console.groupCollapsed('%c[ARIT V6 Coach] Data Source Map','color:#7af0ff;font-weight:bold');
+      if(console.table) console.table(rows);
+      else console.log(rows);
+      var fbs = Object.keys(rows).filter(function(k){return rows[k].status==='Fallback';});
+      var missing = Object.keys(rows).filter(function(k){return rows[k].status==='Missing';});
+      if(fbs.length) console.warn('[ARIT V6 Coach] Fields on FALLBACK (display-only):', fbs);
+      if(missing.length) console.warn('[ARIT V6 Coach] Fields MISSING all sources:', missing);
+      console.info('Disable: localStorage.setItem("ARIT_V6_COACH_DEBUG","0") · Re-print: ARIT_V6.coach.printSourceMap()');
+      console.groupEnd();
+    }catch(_){}
+    return _sourceMap;
   }
 
   function renderCoach(){
@@ -12356,56 +12712,75 @@ html, body, button, input, select, textarea, .tab, .card, .ct, .ctl,
     var ob = document.getElementById('v6-coach-outside');
     var stEl = document.getElementById('v6-coach-state');
     var subEl = document.getElementById('v6-coach-sub');
-    var sp = document.getElementById('v6-coach-spins');
+    var spEl = document.getElementById('v6-coach-spins');
     if(!ib||!ob||!stEl) return;
     var s = snapshot();
     var st = statusOf(s);
     stEl.className = 'v6-state '+st.k;
-    stEl.textContent = st.t;
+    stEl.textContent = st.t + (st.fallback?' (sample)':'');
     if(subEl) subEl.textContent = st.reason;
-    if(sp) sp.textContent = 'Spins: '+s.spins+(s.spins>=120?' · Mature':s.spins>=80?' · Developing':s.spins>=50?' · Limited':' · Learning');
+    if(spEl) spEl.textContent = 'Spins: '+s.spins+(s.spins>=120?' · Mature':s.spins>=80?' · Developing':s.spins>=50?' · Limited':' · Learning');
 
     var insideRec = st.k==='ready' ? 'Cover top numbers + best street/corner.' :
                     st.k==='monitor' ? 'Light coverage only — wait for one more confirmation.' :
                     st.k==='defensive' ? 'Stand down — do not bet inside this spin.' :
                     'Collect more spins before placing inside bets.';
-
     var outsideRec = st.k==='ready' ? 'Bet best dozen + best column with full stake.' :
                      st.k==='monitor' ? 'Half-stake on best dozen only.' :
                      st.k==='defensive' ? 'Skip outside — rotation unstable.' :
                      'Collect more spins before placing outside bets.';
 
+    function asPct(p){
+      if(!p) return p;
+      if(p.value==null) return p;
+      return { value: p.value+'%', isFallback: p.isFallback, source: p.source };
+    }
+    function compRow(label, text){
+      return rowP(label, {value:text, isFallback:!!st.fallback, source:'composite'});
+    }
+    function derRow(label, text){
+      return rowP(label, {value:text, isFallback:false, source:'derived'});
+    }
+
     ib.innerHTML =
-      row('Status', st.t) +
-      row('Top Numbers', s.topNums, 'Awaiting prediction', true) +
-      row('Best Street', s.bestStreet, 'No active prediction', true) +
-      row('Best Double Street', s.bestDStreet, 'No active prediction', true) +
-      row('Best Corner', s.bestCorner, 'No active prediction') +
-      row('Best Split', s.bestSplit, 'Splits inactive') +
-      row('Agreement', s.agreement!=null?(s.agreement+'%'):null, 'Building…') +
-      row('Confidence', s.confidence!=null?(s.confidence+'%'):null, 'Building…') +
-      row('Prediction Age', s.predAge!=null?(s.predAge+' spins'):null, 'No active prediction') +
-      row('Expected Hit Window', s.predExpected!=null?(s.predExpected+' spins'):null, '—') +
-      row('Historical Avg Window', s.histAvgWin!=null?(s.histAvgWin+' spins'):null, 'No history yet') +
-      row('Current Lifetime', s.predLifetime!=null?(s.predLifetime+' spins'):null, '—') +
-      row('Reason', st.reason) +
-      row('Recommendation', insideRec);
+      compRow('Status', st.t) +
+      rowP('Top Numbers', s.topNums, 'Awaiting prediction', true) +
+      rowP('Best Street', s.bestStreet, 'No active prediction', true) +
+      rowP('Best Double Street', s.bestDStreet, 'No active prediction', true) +
+      rowP('Best Corner', s.bestCorner, 'No active prediction') +
+      rowP('Best Split', s.bestSplit, 'Splits inactive') +
+      rowP('Agreement', s.agreement, 'Building…') +
+      rowP('Confidence', asPct(s.confidence), 'Building…') +
+      rowP('Strength', s.strength, 'Building…') +
+      rowP('Prediction Age', s.predAge, 'No active prediction') +
+      rowP('Expected Hit Window', s.predExpected, '—') +
+      rowP('Historical Avg Window', s.histAvgWin, 'No history yet') +
+      rowP('Current Lifetime', s.predLifetime, '—') +
+      rowP('Continue / Stop', s.cs, '—') +
+      compRow('Reason', st.reason) +
+      derRow('Recommendation', insideRec);
 
     ob.innerHTML =
-      row('Status', st.t) +
-      row('Best Dozen', s.bestDozen, 'No active prediction', true) +
-      row('Best Column', s.bestColumn, 'No active prediction', true) +
-      row('Best Outside Bet', s.bestOutside, 'No active prediction') +
-      row('Best Color', s.bestColor, 'Building…') +
-      row('Best Odd/Even', s.bestParity, 'Building…') +
-      row('Best High/Low', s.bestHL, 'Building…') +
-      row('Agreement', s.agreement!=null?(s.agreement+'%'):null, 'Building…') +
-      row('Confidence', s.confidence!=null?(s.confidence+'%'):null, 'Building…') +
-      row('Prediction Age', s.predAge!=null?(s.predAge+' spins'):null, 'No active prediction') +
-      row('Historical Resolution', s.histResol!=null?(s.histResol+' spins'):null, 'Awaiting resolutions') +
-      row('Rotation Status', s.rotation, 'Stable') +
-      row('Reason', st.reason) +
-      row('Recommendation', outsideRec);
+      compRow('Status', st.t) +
+      rowP('Best Dozen', s.bestDozen, 'No active prediction', true) +
+      rowP('Best Column', s.bestColumn, 'No active prediction', true) +
+      rowP('Best Outside Bet', s.bestOutside, 'No active prediction') +
+      rowP('Best Color', s.bestColor, 'Building…') +
+      rowP('Best Odd/Even', s.bestParity, 'Building…') +
+      rowP('Best High/Low', s.bestHL, 'Building…') +
+      rowP('Agreement', s.agreement, 'Building…') +
+      rowP('Confidence', asPct(s.confidence), 'Building…') +
+      rowP('Prediction Age', s.predAge, 'No active prediction') +
+      rowP('Historical Resolution', s.histResol, 'Awaiting resolutions') +
+      rowP('Rotation Status', s.rotation, 'Stable') +
+      rowP('Discipline', s.disc, '—') +
+      compRow('Reason', st.reason) +
+      derRow('Recommendation', outsideRec);
+
+    if(COACH_DEBUG && !_printedMap && Object.keys(s._sources).length){
+      _printedMap = true;
+      _printSourceMap();
+    }
   }
 
   // ── BOOT / WIRING ─────────────────────────────────────────────────
