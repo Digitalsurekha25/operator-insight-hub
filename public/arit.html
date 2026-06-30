@@ -12817,9 +12817,26 @@ html, body, button, input, select, textarea, .tab, .card, .ct, .ctl,
 
   // ── PUBLIC NAMESPACE ──────────────────────────────────────────────
   window.ARIT_V6 = {
-    version: '6.0.1-phase1',
+    version: '6.0.2-phase1',
     bootstrap: { parseBulk: parseBulk, importHistory: importHistory, setHistoryEnabled: setHistoryEnabled },
-    coach: { snapshot: snapshot, statusOf: statusOf, render: renderCoach },
+    coach: {
+      snapshot: snapshot,
+      statusOf: statusOf,
+      render: renderCoach,
+      sources: function(){ return _sourceMap; },
+      fallbacksInUse: function(){
+        return Object.keys(_sourceMap).filter(function(k){ return _sourceMap[k].status==='Fallback'; });
+      },
+      missing: function(){
+        return Object.keys(_sourceMap).filter(function(k){ return _sourceMap[k].status==='Missing'; });
+      },
+      printSourceMap: _printSourceMap,
+      setDebug: function(on){
+        COACH_DEBUG = !!on;
+        try{ localStorage.setItem('ARIT_V6_COACH_DEBUG', on?'1':'0'); }catch(_){}
+        if(on){ _printedMap=false; _printSourceMap(); }
+      }
+    },
     state: function(){ return { history: history, ui: ui }; }
   };
 
