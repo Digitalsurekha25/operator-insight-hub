@@ -4,8 +4,8 @@ import { useEffect } from "react";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Wheel Advisor Pro" },
-      { name: "description", content: "Wheel Advisor Pro — Execution Intelligence V6" },
+      { title: "Betting Hospital — Demo Tool" },
+      { name: "description", content: "Betting Hospital — Roulette execution intelligence demo tool" },
     ],
   }),
   component: Index,
