@@ -25,7 +25,7 @@ function Index() {
         fontFamily: "system-ui",
       }}
     >
-      Loading Wheel Advisor Pro…
+      Loading Betting Hospital…
     </div>
   );
 }
