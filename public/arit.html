@@ -2735,7 +2735,7 @@ function renderWheel(){
       hw+='<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:1px">'+halfA.map(function(n){return '<div style="width:16px;height:16px;display:flex;align-items:center;justify-content:center;background:'+gbg(n)+';border:1px solid #10c870;border-radius:2px;font-size:.55em;font-weight:700;color:'+gc(n)+'">'+n+'</div>';}).join('')+'</div>';
       hw+='</div>';
       hw+='<div style="background:rgba(51,100,255,.07);border:2px solid rgba(51,100,255,.4);border-radius:8px;padding:8px">';
-      hw+='<div style="font-family:var(--font-head);font-size:.68em;color:#4477ff;margin-bottom:4px;letter-spacing:1px">◐ HALF B (Blue — Pos 18-36)</div>';
+      hw+='<div style="font-family:var(--font-head);font-size:.68em;color:#4477ff;margin-bottom:4px;letter-spacing:1px">◐ HALF B (Blue — Pos 10-26)</div>';
       hw+='<div style="font-family:var(--font-head);font-size:1.2em;font-weight:900;color:'+cB+'">'+(fs3.length?(hitsB/fs3.length*100).toFixed(0):0)+'%</div>';
       hw+='<div style="font-size:.65em;color:var(--muted2);margin:2px 0">'+hitsB+' hits | exp '+Math.round(fs3.length/2)+'</div>';
       hw+='<div style="font-size:.65em;color:'+cB+';font-weight:700">'+(hitsB>expH*1.1?'🔥 HOT':hitsB<expH*0.9?'❄ COLD':'⚖ BALANCED')+'</div>';
