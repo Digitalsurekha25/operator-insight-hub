@@ -2720,7 +2720,7 @@ function renderWheel(){
     if(opts.showHalf){
       hwInfo.style.display='block';
       var fs3=getFS();var freq3={};fs3.forEach(function(n){freq3[n]=(freq3[n]||0)+1;});
-      var halfA=WO.slice(0,18),halfB=WO.slice(18);
+      var halfA=WO.slice(0,24),halfB=WO.slice(10,27);
       var hitsA=halfA.reduce(function(a,n){return a+(freq3[n]||0);},0);
       var hitsB=halfB.reduce(function(a,n){return a+(freq3[n]||0);},0);
       var expH=fs3.length/2||1;
