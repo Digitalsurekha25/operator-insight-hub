@@ -13688,6 +13688,676 @@ html, body, button, input, select, textarea, .tab, .card, .ct, .ctl,
 })();
 </script>
 
+<!-- ═══ ARIT V6 PHASE 6 — Betting Hospital shell (font, rebrand, controls, insight) ═══ -->
+<style id="v6p6-style">
+  :root{ --font-ui:'Sora',system-ui,sans-serif; --font-head:'Sora',system-ui,sans-serif; }
+  html,body,button,input,select,textarea,.logo,.hdr-sub,.hdr-spins,.hdr-time,
+  #aritV52,#aritV52 *,.v6-card,.v6-card *{ font-family:'Sora',system-ui,sans-serif !important; }
+  /* V5.2 relocated to bottom-left */
+  #aritV52{ right:auto !important; left:8px !important; }
+  #aritV52 .v52-panel{ right:auto !important; left:8px !important; }
+
+  /* Coach 2.0 header controls */
+  #v6-coach-card .v6p6-coach-ctrls{display:flex;gap:6px;align-items:center;margin-left:8px}
+  #v6-coach-card .v6p6-btn{background:rgba(122,240,255,.08);border:1px solid rgba(122,240,255,.35);color:#7af0ff;
+    font-size:.72em;padding:3px 8px;border-radius:6px;cursor:pointer;font-family:'Sora',system-ui,sans-serif}
+  #v6-coach-card .v6p6-btn:hover{background:rgba(122,240,255,.18)}
+  #v6-coach-card.v6p6-collapsed .v6-grid,#v6-coach-card.v6p6-collapsed #v6p6-coach-why{display:none !important}
+  #v6-coach-card.v6p6-disabled{opacity:.5}
+  #v6p6-coach-why{margin-top:6px;padding:6px 8px;background:rgba(0,0,0,.24);border:1px solid var(--bdr);
+    border-radius:6px;font-size:.75em;color:var(--text);line-height:1.6}
+
+  /* Settings warning banner */
+  #v6p6-settings-warn{position:fixed;top:0;left:0;right:0;z-index:99998;background:linear-gradient(90deg,#3a2c00,#5a3f00);
+    color:#ffd24a;padding:8px 14px;font-size:.85em;display:none;align-items:center;justify-content:center;gap:14px;
+    border-bottom:1px solid #7a5b00;font-family:'Sora',system-ui,sans-serif}
+  #v6p6-settings-warn.show{display:flex}
+  #v6p6-settings-warn button{background:#ffd24a;color:#000;border:0;padding:4px 12px;border-radius:5px;cursor:pointer;font-weight:600}
+  #v6p6-settings-warn .close{background:transparent;color:#ffd24a;border:1px solid #ffd24a}
+
+  /* Quick Spin Entry (header) */
+  .hbtn-qs{background:linear-gradient(135deg,#0a4d3a,#0a2d24);color:#10c870;border:1px solid #10c870;
+    border-radius:6px;padding:5px 10px;font-size:.78em;cursor:pointer;margin-right:4px;font-family:'Sora',system-ui,sans-serif}
+  .hbtn-qs:hover{background:linear-gradient(135deg,#0e6a4f,#0a3d30)}
+  #v6p6-quick-entry{position:fixed;top:60px;right:14px;z-index:99997;background:#0a0a1c;border:1px solid #10c870;
+    border-radius:10px;padding:10px;width:260px;box-shadow:0 8px 26px rgba(0,0,0,.7);display:none;font-family:'Sora',system-ui,sans-serif}
+  #v6p6-quick-entry.show{display:block}
+  #v6p6-quick-entry.mini{width:auto;padding:5px 10px}
+  #v6p6-quick-entry.mini .v6p6-qs-body{display:none}
+  #v6p6-quick-entry .v6p6-qs-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;
+    font-size:.7em;color:#10c870;letter-spacing:1px;cursor:move;user-select:none}
+  #v6p6-quick-entry input{width:100%;padding:6px 8px;background:#141436;border:1px solid #2a2a5a;color:#fff;
+    border-radius:5px;font-size:1em;text-align:center;font-family:'Sora',system-ui,sans-serif}
+  #v6p6-quick-entry .v6p6-qs-btns{display:flex;gap:4px;margin-top:6px}
+  #v6p6-quick-entry .v6p6-qs-btns button{flex:1;padding:5px;background:#10c870;color:#000;border:0;
+    border-radius:5px;cursor:pointer;font-size:.75em;font-weight:600;font-family:'Sora',system-ui,sans-serif}
+  #v6p6-quick-entry .v6p6-qs-btns button.sec{background:#333366;color:#fff}
+  #v6p6-quick-entry .v6p6-qs-last{margin-top:6px;font-size:.7em;color:var(--muted2);text-align:center}
+
+  /* Hit Feed pill / notification center */
+  #v6p6-hitfeed{position:fixed;top:8px;right:14px;z-index:99996;background:#0a0a1c;border:1px solid #7af0ff;
+    color:#7af0ff;padding:4px 10px;border-radius:14px;font-size:.72em;cursor:pointer;display:none;font-family:'Sora',system-ui,sans-serif}
+  #v6p6-hitfeed.show{display:block}
+  #v6p6-hitfeed .cnt{background:#7af0ff;color:#000;border-radius:8px;padding:0 6px;margin-left:4px;font-weight:700}
+  #v6p6-notif-panel{position:fixed;top:36px;right:14px;z-index:99996;width:320px;max-height:60vh;overflow:auto;
+    background:#0a0a1c;border:1px solid #7af0ff;border-radius:8px;padding:8px;display:none;font-family:'Sora',system-ui,sans-serif;
+    box-shadow:0 8px 26px rgba(0,0,0,.7)}
+  #v6p6-notif-panel.show{display:block}
+  #v6p6-notif-panel .row{padding:5px 6px;border-bottom:1px solid #1e1e48;font-size:.75em;color:var(--text)}
+  #v6p6-notif-panel .row .t{color:var(--muted2);font-size:.85em;margin-right:5px}
+  #v6p6-notif-panel .hdr{display:flex;justify-content:space-between;font-size:.7em;color:#7af0ff;
+    letter-spacing:1px;margin-bottom:5px;padding-bottom:5px;border-bottom:1px solid #1e1e48}
+  #v6p6-notif-panel .hdr button{background:transparent;border:1px solid #7af0ff;color:#7af0ff;
+    padding:2px 8px;border-radius:4px;cursor:pointer;font-size:.9em}
+
+  /* Adviser Mini */
+  #v6p6-adv-mini{position:fixed;left:8px;bottom:56px;z-index:99995;background:#0a0a1c;border:1px solid #ffd24a;
+    border-radius:10px;padding:10px;width:220px;box-shadow:0 8px 26px rgba(0,0,0,.7);font-family:'Sora',system-ui,sans-serif;
+    color:var(--text);display:none}
+  #v6p6-adv-mini.show{display:block}
+  #v6p6-adv-mini.mini{width:auto;padding:5px 10px}
+  #v6p6-adv-mini.mini .v6p6-am-body{display:none}
+  #v6p6-adv-mini .v6p6-am-head{display:flex;justify-content:space-between;align-items:center;
+    font-size:.68em;color:#ffd24a;letter-spacing:1px;margin-bottom:6px;cursor:move;user-select:none}
+  #v6p6-adv-mini .v6p6-am-dec{font-family:'Sora',system-ui,sans-serif;font-size:1.1em;font-weight:700;text-align:center;padding:4px;border-radius:5px;margin-bottom:6px}
+  #v6p6-adv-mini .v6p6-am-dec.play{background:rgba(16,200,112,.18);color:#10c870;border:1px solid #10c870}
+  #v6p6-adv-mini .v6p6-am-dec.wait{background:rgba(255,210,74,.14);color:#ffd24a;border:1px solid #ffd24a}
+  #v6p6-adv-mini .v6p6-am-dec.stop{background:rgba(255,68,68,.14);color:#ff4444;border:1px solid #ff4444}
+  #v6p6-adv-mini .v6p6-am-row{display:flex;justify-content:space-between;font-size:.72em;padding:2px 0}
+  #v6p6-adv-mini .v6p6-am-row span:first-child{color:var(--muted2)}
+
+  /* Operator Insight bar */
+  #v6p6-insight-bar{position:fixed;top:0;left:0;right:0;z-index:99994;background:linear-gradient(90deg,#0a1a2e,#0a2540);
+    color:#7af0ff;padding:5px 14px;font-size:.78em;display:none;align-items:center;justify-content:space-between;gap:14px;
+    border-bottom:1px solid #234;font-family:'Sora',system-ui,sans-serif}
+  #v6p6-insight-bar.show{display:flex}
+  #v6p6-insight-bar.watch{background:linear-gradient(90deg,#2a2200,#3a3000);color:#ffd24a;border-color:#5a4700}
+  #v6p6-insight-bar.warn{background:linear-gradient(90deg,#3a1500,#5a1e00);color:#ff9944;border-color:#7a3500}
+  #v6p6-insight-bar.action{background:linear-gradient(90deg,#3a0000,#5a0000);color:#ff4444;border-color:#7a0000}
+  #v6p6-insight-bar button{background:transparent;border:1px solid currentColor;color:inherit;padding:3px 10px;
+    border-radius:5px;cursor:pointer;font-size:.9em;font-family:'Sora',system-ui,sans-serif}
+  #v6p6-insight-modal{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.85);display:none;
+    align-items:flex-start;justify-content:center;padding:30px;overflow:auto;font-family:'Sora',system-ui,sans-serif}
+  #v6p6-insight-modal.show{display:flex}
+  #v6p6-insight-modal .box{width:min(920px,96vw);background:#0a0a1c;border:1px solid #7af0ff;border-radius:12px;padding:16px;color:var(--text)}
+  #v6p6-insight-modal h3{color:#7af0ff;font-size:1em;margin-bottom:10px;letter-spacing:1px}
+  #v6p6-insight-modal h4{color:#ffd24a;font-size:.85em;margin:14px 0 6px;letter-spacing:.5px;border-bottom:1px solid #1e1e48;padding-bottom:4px}
+  #v6p6-insight-modal .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  #v6p6-insight-modal table{width:100%;border-collapse:collapse;font-size:.78em}
+  #v6p6-insight-modal th,#v6p6-insight-modal td{padding:4px 6px;border-bottom:1px solid #1e1e48;text-align:left}
+  #v6p6-insight-modal th{color:var(--muted2);font-weight:600}
+  #v6p6-insight-modal .close{float:right;background:transparent;border:1px solid #7af0ff;color:#7af0ff;
+    padding:4px 10px;border-radius:5px;cursor:pointer}
+
+  /* V5.2 filter chips */
+  .v6p6-chips{display:flex;gap:5px;margin:4px 0}
+  .v6p6-chips button{background:#0f172a;border:1px solid #334155;color:#94a3b8;padding:3px 10px;
+    border-radius:14px;cursor:pointer;font-size:.72em;font-family:'Sora',system-ui,sans-serif}
+  .v6p6-chips button.active{background:#facc15;color:#000;border-color:#facc15}
+
+  /* Timeline filter chips */
+  #v6p6-tl-chips{display:flex;gap:6px;margin:6px 0;flex-wrap:wrap;align-items:center}
+  #v6p6-tl-chips button{background:rgba(122,240,255,.06);border:1px solid rgba(122,240,255,.35);color:#7af0ff;
+    padding:3px 10px;border-radius:12px;cursor:pointer;font-size:.72em;font-family:'Sora',system-ui,sans-serif}
+  #v6p6-tl-chips button.active{background:#7af0ff;color:#000}
+  #v6p6-tl-summary{font-size:.75em;color:#ffd24a;margin-left:6px}
+</style>
+
+<div id="v6p6-settings-warn">
+  <span>⚠ Check Settings — wrong settings can negatively affect predictions.</span>
+  <button onclick="window.ARIT_V6_P6 && ARIT_V6_P6.openSettings()">Review</button>
+  <button class="close" onclick="window.ARIT_V6_P6 && ARIT_V6_P6.dismissSettingsWarn()">✕</button>
+</div>
+
+<div id="v6p6-insight-bar">
+  <span id="v6p6-insight-text">OPERATOR INSIGHT — monitoring…</span>
+  <div style="display:flex;gap:6px">
+    <button onclick="window.ARIT_V6_P6 && ARIT_V6_P6.openInsight()">View Details</button>
+    <button onclick="window.ARIT_V6_P6 && ARIT_V6_P6.hideInsightBar()">✕</button>
+  </div>
+</div>
+
+<div id="v6p6-insight-modal"><div class="box">
+  <button class="close" onclick="window.ARIT_V6_P6 && ARIT_V6_P6.closeInsight()">Close</button>
+  <h3>🔎 OPERATOR INSIGHT CENTER</h3>
+  <div id="v6p6-insight-body">Loading…</div>
+</div></div>
+
+<div id="v6p6-hitfeed" onclick="window.ARIT_V6_P6 && ARIT_V6_P6.toggleNotif()">
+  🔔 Hits <span class="cnt" id="v6p6-hitfeed-cnt">0</span>
+</div>
+<div id="v6p6-notif-panel">
+  <div class="hdr">
+    <span>NOTIFICATION CENTER</span>
+    <button onclick="window.ARIT_V6_P6 && ARIT_V6_P6.clearNotif()">Clear</button>
+  </div>
+  <div id="v6p6-notif-list"></div>
+</div>
+
+<div id="v6p6-quick-entry">
+  <div class="v6p6-qs-head" id="v6p6-qs-head">
+    <span>⚡ QUICK ENTRY</span>
+    <span>
+      <button style="background:transparent;border:0;color:#10c870;cursor:pointer" onclick="window.ARIT_V6_P6 && ARIT_V6_P6.toggleQSMini()">▁</button>
+      <button style="background:transparent;border:0;color:#10c870;cursor:pointer" onclick="window.ARIT_V6_P6 && ARIT_V6_P6.toggleQS()">✕</button>
+    </span>
+  </div>
+  <div class="v6p6-qs-body">
+    <input id="v6p6-qs-input" type="text" inputmode="numeric" placeholder="0–36" maxlength="2" autocomplete="off">
+    <div class="v6p6-qs-btns">
+      <button onclick="window.ARIT_V6_P6 && ARIT_V6_P6.qsEnter()">ENTER</button>
+      <button class="sec" onclick="window.ARIT_V6_P6 && ARIT_V6_P6.qsUndo()">UNDO</button>
+    </div>
+    <div class="v6p6-qs-last" id="v6p6-qs-last">Last: —</div>
+  </div>
+</div>
+
+<div id="v6p6-adv-mini">
+  <div class="v6p6-am-head" id="v6p6-am-head">
+    <span>🧠 ADVISER</span>
+    <span>
+      <button style="background:transparent;border:0;color:#ffd24a;cursor:pointer" onclick="window.ARIT_V6_P6 && ARIT_V6_P6.toggleAdvMini()">▁</button>
+      <button style="background:transparent;border:0;color:#ffd24a;cursor:pointer" onclick="window.ARIT_V6_P6 && ARIT_V6_P6.hideAdvMini()">✕</button>
+    </span>
+  </div>
+  <div class="v6p6-am-body" id="v6p6-am-body">Loading…</div>
+</div>
+
+<script>
+/* ARIT V6 PHASE 6 — Betting Hospital shell
+   Additive read-only overlay. Namespace: window.ARIT_V6_P6.
+   Provides: Coach controls, Settings banner, Notif center (soft-hit),
+   Quick Entry popup, Adviser Mini, Operator Insight bar + modal,
+   V5.2 filter chips (Last 5/10), Timeline filter chips, Prediction-change popup.
+*/
+(function ARIT_V6_P6(){
+  var UI_KEY='ARIT_V6_UI';
+  var NOTIF_KEY='ARIT_V6_NOTIF';
+  function loadUI(){ try{ return JSON.parse(localStorage.getItem(UI_KEY)||'{}'); }catch(_){ return {}; } }
+  function saveUI(o){ try{ localStorage.setItem(UI_KEY, JSON.stringify(o)); }catch(_){} }
+  var UI=loadUI();
+  function setUI(k,v){ UI[k]=v; saveUI(UI); }
+  var notifList=[];
+  try{ notifList=JSON.parse(sessionStorage.getItem(NOTIF_KEY)||'[]'); }catch(_){}
+
+  // ── HEADER: inject Quick Entry button ─────────────────────────────
+  function injectHeader(){
+    var right=document.querySelector('.hdr-right');
+    if(!right || document.getElementById('v6p6-qs-btn')) return;
+    var b=document.createElement('button');
+    b.className='hbtn hbtn-qs';
+    b.id='v6p6-qs-btn';
+    b.textContent='⚡ Quick Entry';
+    b.onclick=function(){ toggleQS(); };
+    right.insertBefore(b, right.firstChild);
+  }
+
+  // ── COACH 2.0 controls ────────────────────────────────────────────
+  function injectCoachControls(){
+    var card=document.getElementById('v6-coach-card');
+    if(!card || card.querySelector('.v6p6-coach-ctrls')) return;
+    var head=card.querySelector('.v6-head');
+    if(!head) return;
+    var wrap=document.createElement('div');
+    wrap.className='v6p6-coach-ctrls';
+    wrap.innerHTML=
+      '<button class="v6p6-btn" id="v6p6-coach-toggle">'+(UI.coachEnabled===false?'Enable':'Disable')+'</button>'+
+      '<button class="v6p6-btn" id="v6p6-coach-collapse">'+(UI.coachCollapsed?'▸':'▾')+'</button>';
+    head.appendChild(wrap);
+    document.getElementById('v6p6-coach-toggle').onclick=function(){
+      setUI('coachEnabled', UI.coachEnabled===false);
+      applyCoachState();
+    };
+    document.getElementById('v6p6-coach-collapse').onclick=function(){
+      setUI('coachCollapsed', !UI.coachCollapsed);
+      applyCoachState();
+    };
+    // Why strip
+    if(!document.getElementById('v6p6-coach-why')){
+      var why=document.createElement('div');
+      why.id='v6p6-coach-why';
+      why.textContent='Awaiting engine signals…';
+      card.appendChild(why);
+    }
+    applyCoachState();
+  }
+  function applyCoachState(){
+    var card=document.getElementById('v6-coach-card'); if(!card) return;
+    card.classList.toggle('v6p6-collapsed', !!UI.coachCollapsed);
+    card.classList.toggle('v6p6-disabled', UI.coachEnabled===false);
+    var t=document.getElementById('v6p6-coach-toggle'); if(t) t.textContent=UI.coachEnabled===false?'Enable':'Disable';
+    var c=document.getElementById('v6p6-coach-collapse'); if(c) c.textContent=UI.coachCollapsed?'▸':'▾';
+  }
+  function updateCoachWhy(){
+    var why=document.getElementById('v6p6-coach-why'); if(!why) return;
+    if(UI.coachEnabled===false || UI.coachCollapsed) return;
+    var reasons=buildReasons();
+    why.innerHTML='<b style="color:#7af0ff">WHY:</b> '+(reasons.length?reasons.join(' · '):'Not enough signals yet.');
+  }
+  function buildReasons(){
+    var out=[];
+    try{
+      var mv=window.ARIT_V6_PHASE4&&window.ARIT_V6_PHASE4.masterVerdict&&window.ARIT_V6_PHASE4.masterVerdict();
+      if(mv){ out.push('Master verdict '+String(mv.verdict||mv.v||'?').toUpperCase()); }
+      var p2=window.ARIT_V6_PHASE2&&window.ARIT_V6_PHASE2.snapshot&&window.ARIT_V6_PHASE2.snapshot();
+      if(p2&&p2.continueStop){ out.push('Continue/Stop: '+(p2.continueStop.pill||p2.continueStop.label||'?')); }
+      if(p2&&p2.lifecycle){ out.push('Lifecycle: '+(p2.lifecycle.phase||'?')); }
+      var p3=window.ARIT_V6_PHASE3&&window.ARIT_V6_PHASE3.snapshot&&window.ARIT_V6_PHASE3.snapshot();
+      if(p3&&p3.shift){ out.push('Shift: '+(p3.shift.pill||p3.shift.label||'?')); }
+      if(p3&&p3.readiness){ out.push('Readiness: '+(p3.readiness.ready?'READY':'BUILDING')); }
+      if(p3&&p3.discipline){ out.push('Discipline: '+(p3.discipline.pill||p3.discipline.label||'?')); }
+    }catch(_){}
+    return out.slice(0,5);
+  }
+
+  // ── SETTINGS WARNING ──────────────────────────────────────────────
+  function checkSettings(){
+    if(UI.settingsWarnDismissed) return;
+    var problems=[];
+    try{
+      var s=window.settings||{};
+      // Heuristic checks — only flag obvious misconfigurations
+      var spins=(window.spins||[]).length;
+      if(spins===0) problems.push('no spins');
+      if(s.obsWindow && (s.obsWindow<20||s.obsWindow>500)) problems.push('obsWindow out of range');
+    }catch(_){}
+    var b=document.getElementById('v6p6-settings-warn');
+    if(b) b.classList.toggle('show', problems.length>0);
+  }
+  function dismissSettingsWarn(){
+    UI.settingsWarnDismissed=true; saveUI(UI);
+    var b=document.getElementById('v6p6-settings-warn'); if(b) b.classList.remove('show');
+  }
+  function openSettings(){
+    dismissSettingsWarn();
+    try{ if(typeof window.openSettings==='function' && window.openSettings!==openSettings){ window.openSettings(); return; } }catch(_){}
+    try{ if(typeof window.switchTab==='function') window.switchTab('settings'); }catch(_){}
+  }
+
+  // ── NOTIFICATION CENTER (soft hit intercept) ──────────────────────
+  function pushNotif(msg, kind){
+    var row={t:new Date().toLocaleTimeString(),m:String(msg||'').slice(0,140),k:kind||'info'};
+    notifList.unshift(row);
+    if(notifList.length>50) notifList.length=50;
+    try{ sessionStorage.setItem(NOTIF_KEY, JSON.stringify(notifList)); }catch(_){}
+    renderNotif();
+  }
+  function renderNotif(){
+    var pill=document.getElementById('v6p6-hitfeed');
+    var cnt=document.getElementById('v6p6-hitfeed-cnt');
+    if(pill) pill.classList.add('show');
+    if(cnt) cnt.textContent=notifList.length;
+    var list=document.getElementById('v6p6-notif-list');
+    if(list){
+      list.innerHTML=notifList.map(function(r){
+        var c=r.k==='hit'?'#10c870':r.k==='warn'?'#ffd24a':r.k==='action'?'#ff4444':'#7af0ff';
+        return '<div class="row"><span class="t">'+r.t+'</span><span style="color:'+c+'">•</span> '+r.m+'</div>';
+      }).join('') || '<div class="row" style="color:var(--muted2)">No notifications.</div>';
+    }
+  }
+  function toggleNotif(){
+    var p=document.getElementById('v6p6-notif-panel'); if(!p) return;
+    p.classList.toggle('show');
+    if(p.classList.contains('show')) renderNotif();
+  }
+  function clearNotif(){ notifList=[]; try{sessionStorage.removeItem(NOTIF_KEY);}catch(_){} renderNotif(); }
+  function interceptNotify(){
+    try{
+      var origNotify=(window.ARIT_V2&&window.ARIT_V2.notify)||null;
+      if(origNotify && !origNotify.__v6p6){
+        var w=function(msg,type){
+          try{ pushNotif(msg, /hit/i.test(String(msg))?'hit':type||'info'); }catch(_){}
+          // suppress noisy DOM toast for hit-type notifications; keep others
+          if(!/hit/i.test(String(msg))){
+            try{ return origNotify.apply(this,arguments); }catch(_){}
+          }
+        };
+        w.__v6p6=true;
+        window.ARIT_V2.notify=w;
+      }
+    }catch(_){}
+  }
+
+  // ── QUICK ENTRY ───────────────────────────────────────────────────
+  function toggleQS(){
+    var el=document.getElementById('v6p6-quick-entry'); if(!el) return;
+    el.classList.toggle('show');
+    if(el.classList.contains('show')){
+      var i=document.getElementById('v6p6-qs-input'); if(i){ i.value=''; i.focus(); }
+      updateQSLast();
+    }
+  }
+  function toggleQSMini(){
+    var el=document.getElementById('v6p6-quick-entry'); if(el) el.classList.toggle('mini');
+  }
+  function updateQSLast(){
+    var el=document.getElementById('v6p6-qs-last'); if(!el) return;
+    try{
+      var arr=window.spins||[]; var last=arr[arr.length-1];
+      el.textContent='Last: '+(last!=null?last:'—')+' · Spins: '+arr.length;
+    }catch(_){}
+  }
+  function qsEnter(){
+    var i=document.getElementById('v6p6-qs-input'); if(!i) return;
+    var v=parseInt(i.value,10);
+    if(isNaN(v)||v<0||v>36){ i.value=''; i.focus(); return; }
+    try{
+      // Prefer existing doEnterSpin(n); fall back to setting input + click
+      if(typeof window.doEnterSpin==='function'){ window.doEnterSpin(v); }
+      else {
+        var inp=document.getElementById('spinInput'); if(inp){ inp.value=v; }
+        var b=document.querySelector('[onclick*="doEnterSpin"]'); if(b) b.click();
+      }
+    }catch(_){}
+    i.value=''; i.focus();
+    setTimeout(updateQSLast,80);
+  }
+  function qsUndo(){
+    try{ if(typeof window.doUndo==='function') window.doUndo(); }catch(_){}
+    setTimeout(updateQSLast,80);
+  }
+  function wireQSInput(){
+    var i=document.getElementById('v6p6-qs-input'); if(!i||i.__wired) return;
+    i.__wired=true;
+    i.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); qsEnter(); } });
+  }
+
+  // ── ADVISER MINI ──────────────────────────────────────────────────
+  function renderAdvMini(){
+    var el=document.getElementById('v6p6-adv-mini'); if(!el) return;
+    if(UI.advMiniHidden) { el.classList.remove('show'); return; }
+    el.classList.add('show');
+    if(UI.advMiniMini) el.classList.add('mini'); else el.classList.remove('mini');
+    var body=document.getElementById('v6p6-am-body'); if(!body) return;
+    var decision='WAIT', dcls='wait', primary='—', secondary='—', offset='—', conf='—';
+    try{
+      var ex=window.buildExecution&&window.buildExecution();
+      if(ex){
+        conf=(ex.conf!=null?ex.conf:'—');
+        if(ex.conf>=6) { decision='PLAY'; dcls='play'; }
+        else if(ex.conf<=2) { decision='STOP'; dcls='stop'; }
+        else { decision='CAUTION'; dcls='wait'; }
+      }
+      var adv=window.execAnalytics&&window.execAnalytics.adviser;
+      if(adv){
+        primary=(adv.primary&&adv.primary.pick)||primary;
+        secondary=(adv.secondary&&adv.secondary.pick)||secondary;
+        offset=(adv.offset&&adv.offset.pick)||offset;
+      }
+    }catch(_){}
+    body.innerHTML=
+      '<div class="v6p6-am-dec '+dcls+'">'+decision+'</div>'+
+      '<div class="v6p6-am-row"><span>Confidence</span><b>'+conf+'</b></div>'+
+      '<div class="v6p6-am-row"><span>Primary</span><b>'+String(primary).slice(0,18)+'</b></div>'+
+      '<div class="v6p6-am-row"><span>Secondary</span><b>'+String(secondary).slice(0,18)+'</b></div>'+
+      '<div class="v6p6-am-row"><span>Offset</span><b>'+String(offset).slice(0,18)+'</b></div>';
+  }
+  function toggleAdvMini(){ setUI('advMiniMini', !UI.advMiniMini); renderAdvMini(); }
+  function hideAdvMini(){ setUI('advMiniHidden', true); renderAdvMini(); }
+  function showAdvMini(){ setUI('advMiniHidden', false); renderAdvMini(); }
+
+  // ── V5.2 filter chips (Last 5 / 10) ────────────────────────────────
+  function injectV52Chips(){
+    var panel=document.getElementById('v52Panel'); if(!panel) return;
+    var headers=panel.querySelectorAll('h4');
+    headers.forEach(function(h){
+      var t=h.textContent||'';
+      if(!/Decision Validation|Wheel vs Table Agreement/i.test(t)) return;
+      if(h.__v6p6Chips) return; h.__v6p6Chips=true;
+      var chips=document.createElement('div'); chips.className='v6p6-chips';
+      ['All','Last 10','Last 5'].forEach(function(l,i){
+        var b=document.createElement('button');
+        b.textContent=l; if(i===0) b.classList.add('active');
+        b.onclick=function(){
+          var sib=chips.querySelectorAll('button'); sib.forEach(function(x){x.classList.remove('active');});
+          b.classList.add('active');
+          applyV52Filter(h, l==='All'?0:(l==='Last 10'?10:5));
+        };
+        chips.appendChild(b);
+      });
+      h.parentNode.insertBefore(chips, h.nextSibling);
+    });
+  }
+  function applyV52Filter(hdr, n){
+    // Read-only filter: hide all rows in the following table beyond last N (from top).
+    var tbl=hdr.parentNode.querySelector('table'); if(!tbl) return;
+    var rows=tbl.querySelectorAll('tbody tr'); if(!rows.length) rows=tbl.querySelectorAll('tr');
+    var body=Array.prototype.filter.call(rows,function(r){return r.querySelectorAll('td').length>0;});
+    if(!n){ body.forEach(function(r){r.style.display='';}); return; }
+    body.forEach(function(r,i){ r.style.display = i<n ? '' : 'none'; });
+  }
+
+  // ── TIMELINE FILTER CHIPS (Execution tab) ─────────────────────────
+  function injectTimelineChips(){
+    // Find "LIVE EVENT TIMELINE" header
+    var all=document.querySelectorAll('.ctl'); var hdr=null;
+    for(var i=0;i<all.length;i++){ if(/LIVE EVENT TIMELINE/i.test(all[i].textContent||'')){ hdr=all[i]; break; } }
+    if(!hdr) return;
+    if(document.getElementById('v6p6-tl-chips')) return;
+    var box=document.createElement('div'); box.id='v6p6-tl-chips';
+    ['All','Last 10','Last 5','Hits only'].forEach(function(l,i){
+      var b=document.createElement('button'); b.textContent=l;
+      if(i===0) b.classList.add('active');
+      b.onclick=function(){
+        box.querySelectorAll('button').forEach(function(x){x.classList.remove('active');});
+        b.classList.add('active');
+        applyTimelineFilter(hdr, l);
+      };
+      box.appendChild(b);
+    });
+    var sum=document.createElement('span'); sum.id='v6p6-tl-summary'; box.appendChild(sum);
+    hdr.parentNode.insertBefore(box, hdr.nextSibling);
+  }
+  function applyTimelineFilter(hdr, mode){
+    var container=hdr.parentNode;
+    // find rows following the header (all direct children of scroll box)
+    var scroller=container.querySelector('[id*="timeline"], [id*="Timeline"], .timeline-list') || container;
+    var rows=scroller.querySelectorAll('.tl-row, .timeline-row, [data-tl-row]');
+    if(!rows.length) rows=scroller.querySelectorAll('div[class*="tl"]');
+    var arr=Array.prototype.slice.call(rows);
+    var shown=0, hits=0;
+    arr.forEach(function(r,i){
+      var isHit=/hit/i.test(r.textContent||'')||r.classList.contains('hit');
+      var visible=true;
+      if(mode==='Hits only') visible=isHit;
+      else if(mode==='Last 5') visible=i<5;
+      else if(mode==='Last 10') visible=i<10;
+      r.style.display=visible?'':'none';
+      if(visible){ shown++; if(isHit) hits++; }
+    });
+    var s=document.getElementById('v6p6-tl-summary');
+    if(s) s.textContent=' Window: '+mode+' — '+hits+'/'+shown+' hits ('+(shown?Math.round(hits/shown*100):0)+'%)';
+  }
+
+  // ── PREDICTION-CHANGE POPUP ────────────────────────────────────────
+  var _lastPredSig={};
+  function checkPredChange(){
+    try{
+      var ex=window.buildExecution&&window.buildExecution(); if(!ex) return;
+      var sig={ gold:(ex.gold||[]).join(','), silver:(ex.silver||[]).join(','), zone:ex.clusterZone||'' };
+      Object.keys(sig).forEach(function(k){
+        if(_lastPredSig[k]!==undefined && _lastPredSig[k]!==sig[k] && sig[k]){
+          pushNotif('Prediction change — '+k.toUpperCase()+' → '+sig[k].slice(0,40), 'warn');
+        }
+        _lastPredSig[k]=sig[k];
+      });
+    }catch(_){}
+  }
+
+  // ── OPERATOR INSIGHT ──────────────────────────────────────────────
+  var _lastInsight={ level:'info', text:'' };
+  function computeInsight(){
+    var flags=[]; var level='info';
+    try{
+      var mv=window.ARIT_V6_PHASE4&&window.ARIT_V6_PHASE4.masterVerdict&&window.ARIT_V6_PHASE4.masterVerdict();
+      var p2=window.ARIT_V6_PHASE2&&window.ARIT_V6_PHASE2.snapshot&&window.ARIT_V6_PHASE2.snapshot();
+      var p3=window.ARIT_V6_PHASE3&&window.ARIT_V6_PHASE3.snapshot&&window.ARIT_V6_PHASE3.snapshot();
+      if(mv && (mv.verdict==='stop'||mv.v==='stop')){ level='action'; flags.push('Master verdict STOP'); }
+      if(p2&&p2.continueStop&&/stop/i.test(p2.continueStop.pill||p2.continueStop.label||'')){ level=level==='action'?level:'warn'; flags.push('Continue/Stop = STOP'); }
+      if(p3&&p3.shift&&/shift|stop/i.test(p3.shift.pill||p3.shift.label||'')){ level=level==='action'?level:'watch'; flags.push('Fast shift detected'); }
+      if(p3&&p3.discipline&&/warn|stop/i.test(p3.discipline.pill||p3.discipline.label||'')){ level=level==='action'?level:'warn'; flags.push('Discipline alert'); }
+      if(p3&&p3.readiness&&p3.readiness.ready){ flags.push('Session READY'); }
+    }catch(_){}
+    return { level:level, text: flags.slice(0,4).join(' · ') || 'Monitoring…', flags:flags };
+  }
+  function updateInsightBar(){
+    var s=computeInsight();
+    var bar=document.getElementById('v6p6-insight-bar'); if(!bar) return;
+    var txt=document.getElementById('v6p6-insight-text'); if(txt) txt.textContent='OPERATOR INSIGHT · '+s.text;
+    bar.classList.remove('watch','warn','action');
+    if(s.level!=='info') bar.classList.add(s.level);
+    // Only auto-show on level >= watch
+    var show = (s.level!=='info') && !UI.insightSnoozed;
+    bar.classList.toggle('show', show);
+    // Emit soft notif on level escalation
+    if(s.level!=='info' && s.text!==_lastInsight.text){
+      pushNotif('INSIGHT — '+s.text, s.level==='action'?'action':s.level==='warn'?'warn':'info');
+    }
+    _lastInsight=s;
+  }
+  function openInsight(){
+    var m=document.getElementById('v6p6-insight-modal'); if(!m) return;
+    m.classList.add('show'); renderInsightModal();
+  }
+  function closeInsight(){ var m=document.getElementById('v6p6-insight-modal'); if(m) m.classList.remove('show'); }
+  function hideInsightBar(){ UI.insightSnoozed=true; saveUI(UI); var b=document.getElementById('v6p6-insight-bar'); if(b) b.classList.remove('show'); }
+  function renderInsightModal(){
+    var body=document.getElementById('v6p6-insight-body'); if(!body) return;
+    var p2={}, p3={}, mv={};
+    try{ p2=window.ARIT_V6_PHASE2&&window.ARIT_V6_PHASE2.snapshot()||{}; }catch(_){}
+    try{ p3=window.ARIT_V6_PHASE3&&window.ARIT_V6_PHASE3.snapshot()||{}; }catch(_){}
+    try{ mv=window.ARIT_V6_PHASE4&&window.ARIT_V6_PHASE4.masterVerdict()||{}; }catch(_){}
+    var ex={}; try{ ex=window.buildExecution&&window.buildExecution()||{}; }catch(_){}
+    var adv={}; try{ adv=(window.execAnalytics&&window.execAnalytics.adviser)||{}; }catch(_){}
+    var sources=[
+      ['Gold', ex.gold?ex.gold.slice(0,3).join(','):'—'],
+      ['Silver', ex.silver?ex.silver.slice(0,3).join(','):'—'],
+      ['Bronze', ex.bronze?ex.bronze.slice(0,3).join(','):'—'],
+      ['Zone', ex.clusterZone||'—'],
+      ['Lifetime', (ex.lifetime&&ex.lifetime.pick)||'—'],
+      ['Adviser Primary', (adv.primary&&adv.primary.pick)||'—'],
+      ['Adviser Secondary', (adv.secondary&&adv.secondary.pick)||'—'],
+      ['Adviser Offset', (adv.offset&&adv.offset.pick)||'—'],
+      ['Wheel', (window.settings&&window.settings.wheelDir)||'—'],
+      ['Active Plan', (ex.activePlan&&ex.activePlan.name)||'—']
+    ];
+    var srcHtml='<table><tr><th>Source</th><th>Current Pick</th></tr>'+
+      sources.map(function(r){return '<tr><td>'+r[0]+'</td><td>'+r[1]+'</td></tr>';}).join('')+'</table>';
+
+    var sync=[
+      ['Wheel ↔ Adviser', matchLabel(ex,'wheel','adviser')],
+      ['Wheel ↔ Table', matchLabel(ex,'wheel','table')],
+      ['Adviser ↔ Zone', matchLabel(ex,'adviser','zone')],
+      ['Active Plan ↔ Gold', matchLabel(ex,'plan','gold')],
+      ['Continue/Stop ↔ Behaviour', p2.continueStop?(p2.continueStop.pill||'—'):'—']
+    ];
+    var syncHtml='<table><tr><th>Engine Pair</th><th>Status</th></tr>'+
+      sync.map(function(r){return '<tr><td>'+r[0]+'</td><td>'+r[1]+'</td></tr>';}).join('')+'</table>';
+
+    var whyItems=buildReasons();
+    var whyHtml='<ul style="margin-left:18px">'+whyItems.map(function(w){return '<li>'+w+'</li>';}).join('')+'</ul>';
+
+    var dirHtml='<div>Wheel direction health: <b>'+((window.settings&&window.settings.wheelDir)||'—')+'</b></div>'+
+      '<div style="color:var(--muted2);font-size:.85em;margin-top:4px">Mismatch tracker uses existing Wheel tab data.</div>';
+
+    var lifespanHtml='<table><tr><th>Stream</th><th>Current</th><th>Best</th><th>Worst</th></tr>'+
+      ['Lifetime','Primary','Secondary','Offset'].map(function(k){
+        return '<tr><td>'+k+'</td><td>—</td><td>—</td><td>—</td></tr>';
+      }).join('')+'</table>'+
+      '<div style="color:var(--muted2);font-size:.8em;margin-top:4px">Live tracker binds to Adviser/Execution history as sources expose lifespan data.</div>';
+
+    body.innerHTML=
+      '<h4>1 · Source Changes</h4>'+srcHtml+
+      '<h4>2 · Lifespan Tracker</h4>'+lifespanHtml+
+      '<h4>3 · Synchronization Matrix</h4>'+syncHtml+
+      '<h4>4 · Wheel Direction Health</h4>'+dirHtml+
+      '<h4>5 · Sudden Change Detection</h4><div>'+(computeInsight().text||'Nothing unusual.')+'</div>'+
+      '<h4>6 · Explain WHY</h4>'+whyHtml;
+  }
+  function matchLabel(ex,a,b){
+    try{
+      var pA=pickSet(ex,a), pB=pickSet(ex,b);
+      if(!pA.length||!pB.length) return '—';
+      var overlap=pA.filter(function(x){return pB.indexOf(x)>=0;}).length;
+      if(overlap>=Math.min(pA.length,pB.length)/2) return 'Match';
+      if(overlap===0) return 'Opposite';
+      return 'Weak';
+    }catch(_){ return '—'; }
+  }
+  function pickSet(ex,k){
+    if(k==='gold') return (ex.gold||[]).slice(0,6);
+    if(k==='wheel') return (ex.wheel||ex.wheelPicks||[]).slice(0,6);
+    if(k==='adviser'){ try{var a=window.execAnalytics&&window.execAnalytics.adviser; return ((a&&a.primary&&a.primary.nums)||[]).slice(0,6);}catch(_){return [];} }
+    if(k==='table') return (ex.table||[]).slice(0,6);
+    if(k==='zone') return (ex.clusterZoneNums||[]).slice(0,6);
+    if(k==='plan') return (ex.activePlan&&ex.activePlan.nums||[]).slice(0,6);
+    return [];
+  }
+
+  // ── DRAG HELPERS ─────────────────────────────────────────────────
+  function makeDraggable(el, handle){
+    if(!el||!handle||el.__drag) return; el.__drag=true;
+    var sx,sy,ox,oy,drag=false;
+    handle.addEventListener('mousedown', function(e){
+      drag=true; sx=e.clientX; sy=e.clientY;
+      var r=el.getBoundingClientRect(); ox=r.left; oy=r.top;
+      e.preventDefault();
+    });
+    document.addEventListener('mousemove', function(e){
+      if(!drag) return;
+      el.style.left=(ox+e.clientX-sx)+'px';
+      el.style.top=(oy+e.clientY-sy)+'px';
+      el.style.right='auto'; el.style.bottom='auto';
+    });
+    document.addEventListener('mouseup', function(){ drag=false; });
+  }
+
+  // ── TICK / BOOT ──────────────────────────────────────────────────
+  function tick(){
+    try{ injectHeader(); }catch(_){}
+    try{ injectCoachControls(); }catch(_){}
+    try{ updateCoachWhy(); }catch(_){}
+    try{ checkSettings(); }catch(_){}
+    try{ interceptNotify(); }catch(_){}
+    try{ wireQSInput(); }catch(_){}
+    try{ renderAdvMini(); }catch(_){}
+    try{ injectV52Chips(); }catch(_){}
+    try{ injectTimelineChips(); }catch(_){}
+    try{ checkPredChange(); }catch(_){}
+    try{ updateInsightBar(); }catch(_){}
+    try{
+      makeDraggable(document.getElementById('v6p6-quick-entry'), document.getElementById('v6p6-qs-head'));
+      makeDraggable(document.getElementById('v6p6-adv-mini'), document.getElementById('v6p6-am-head'));
+    }catch(_){}
+  }
+  function boot(){
+    // Show adviser mini by default (unless user hid it)
+    if(UI.advMiniHidden===undefined){ UI.advMiniHidden=false; saveUI(UI); }
+    tick();
+    setInterval(tick, 1500);
+    // hook into existing update cycle
+    try{
+      var origUA=window.updateAll;
+      if(typeof origUA==='function' && !origUA.__v6p6){
+        window.updateAll=function(){ var r=origUA.apply(this,arguments); try{tick();}catch(_){} return r; };
+        window.updateAll.__v6p6=true;
+      }
+    }catch(_){}
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+
+  window.ARIT_V6_P6={
+    toggleQS:toggleQS, toggleQSMini:toggleQSMini, qsEnter:qsEnter, qsUndo:qsUndo,
+    toggleNotif:toggleNotif, clearNotif:clearNotif, pushNotif:pushNotif,
+    toggleAdvMini:toggleAdvMini, hideAdvMini:hideAdvMini, showAdvMini:showAdvMini,
+    openInsight:openInsight, closeInsight:closeInsight, hideInsightBar:hideInsightBar,
+    openSettings:openSettings, dismissSettingsWarn:dismissSettingsWarn,
+    ui:function(){return UI;}, notifList:function(){return notifList.slice();}
+  };
+})();
+</script>
+
 </body>
 </html>
 
